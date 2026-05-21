@@ -9,7 +9,8 @@
 # gensokyo
 
 _✨ 基于 [OneBot](https://github.com/howmanybots/onebot/blob/master/README.md) QQ官方机器人Api Golang 原生实现 ✨_  
-
+# 与原项目的区别
+_✨ 使用DeepseekV4 跟进了QQ官方API与事件订阅 ✨_  
 
 </div>
 
