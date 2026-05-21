@@ -6,28 +6,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # 1. 单独构建前端，只执行一次
+  build-frontend:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            goos: linux
-            goarch: amd64
-            ext: ""
-          - os: windows
-            goos: windows
-            goarch: amd64
-            ext: ".exe"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -52,10 +36,75 @@ jobs:
 
       - name: Clean up embedded webui
         run: |
-          # 删除 source map 文件，减小嵌入体积
+          # 删除 source map 文件，减小体积
           find webui/dist -type f -name "*.map" -delete
           # 移除无关文件
           find webui/dist -type f \( -name ".gitkeep" -o -name ".gitignore" \) -delete
+
+      - name: Upload webui artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webui-dist
+          path: webui/dist
+
+  # 2. 多平台编译
+  build-binaries:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - os: linux
+            goos: linux
+            goarch: amd64
+            ext: ""
+          - os: linux
+            goos: linux
+            goarch: 386
+            ext: ""
+          - os: linux
+            goos: linux
+            goarch: arm64
+            ext: ""
+          - os: linux
+            goos: linux
+            goarch: arm
+            goarm: 7
+            ext: ""
+          # Windows
+          - os: windows
+            goos: windows
+            goarch: amd64
+            ext: ".exe"
+          - os: windows
+            goos: windows
+            goarch: 386
+            ext: ".exe"
+          - os: windows
+            goos: windows
+            goarch: arm64
+            ext: ".exe"
+          - os: windows
+            goos: windows
+            goarch: arm
+            goarm: 7
+            ext: ".exe"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Download webui artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webui-dist
+          path: webui/dist
 
       - name: Download Go dependencies
         run: go mod tidy
@@ -64,17 +113,18 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
         run: |
-          go build -trimpath -ldflags="-s -w" -v -o gensokyo-${{ matrix.os }}${{ matrix.ext }} .
+          go build -trimpath -ldflags="-s -w" -v -o gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }} .
 
       - name: Install UPX
         run: sudo apt-get install -y upx-ucl
 
       - name: Compress binary with UPX
-        run: upx --best gensokyo-${{ matrix.os }}${{ matrix.ext }}
+        run: upx --best gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: gensokyo-${{ matrix.os }}
-          path: gensokyo-${{ matrix.os }}${{ matrix.ext }}
+          name: gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
+          path: gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
