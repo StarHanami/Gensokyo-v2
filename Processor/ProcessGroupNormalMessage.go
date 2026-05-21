@@ -21,13 +21,14 @@ import (
 // ProcessGroupNormalMessage 处理普通群消息（无需 @）
 func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) error {
 	// ------ 新增 start ------
-	// 检查是否 @ 了机器人，如果是，则直接按群at消息处理
+	// 检查是否 @ 了机器人，如果是，直接从 content 中移除对应的 <@...> 文本
 	for _, mention := range data.Mentions {
 		if mention.IsYou {
-			mylog.Printf("普通群消息检测到@机器人，转发至ProcessGroupMessage处理")
-			// 将数据转为 WSGroupATMessageData（两者底层都是 Message，可直接转换）
-			atData := (*dto.WSGroupATMessageData)(unsafe.Pointer(data))
-			return p.ProcessGroupMessage(atData)
+			// 移除 content 中的 <@机器人OpenID> 及其前后空格
+			data.Content = strings.TrimSpace(
+				strings.Replace(data.Content, "<@"+mention.ID+">", "", 1),
+			)
+			break
 		}
 	}
 	// ------ 新增 end ------
