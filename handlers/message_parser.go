@@ -1108,36 +1108,31 @@ func RevertTransformedText(data interface{}, msgtype string, api openapi.OpenAPI
 	// 将messageText里的BotID替换成AppID
 	messageText = strings.ReplaceAll(messageText, BotID, AppID)
 
-	// 使用正则表达式来查找所有<@!数字>的模式
-	re := regexp.MustCompile(`<@!(\d+)>`)
-	// 使用正则表达式来替换找到的模式为[CQ:at,qq=用户ID]
+	// 同时匹配 <@!数字>、<@!OpenID>、<@数字>、<@OpenID>
+	re := regexp.MustCompile(`<@!?([0-9A-Fa-f]+)>`)
 	messageText = re.ReplaceAllStringFunc(messageText, func(m string) string {
 		submatches := re.FindStringSubmatch(m)
 		if len(submatches) > 1 {
 			userID := submatches[1]
-			// 检查是否是 BotID，如果是则直接返回，不进行映射,或根据用户需求移除
-			if userID == AppID {
+			// 如果是机器人自己（BotID），按配置决定移除或保留
+			if userID == BotID {
 				if config.GetRemoveAt() {
 					return ""
-				} else {
-					return "[CQ:at,qq=" + AppID + "]"
 				}
+				return "[CQ:at,qq=" + BotID + "]"
 			}
-
-			// 不是 BotID，进行正常映射
+			// 正常用户，映射成虚拟 ID
 			userID64, err := idmap.StoreIDv2(userID)
 			if err != nil {
-				//如果储存失败(数据库损坏)返回原始值
 				mylog.Printf("Error storing ID: %v", err)
+				// 映射失败时，仍用原始 ID（避免丢信息）
 				return "[CQ:at,qq=" + userID + "]"
 			}
-			// 类型转换
-			userIDStr := strconv.FormatInt(userID64, 10)
-			// 经过转换的cq码
-			return "[CQ:at,qq=" + userIDStr + "]"
+			return "[CQ:at,qq=" + strconv.FormatInt(userID64, 10) + "]"
 		}
 		return m
 	})
+
 	//结构 <@!>空格/内容
 	//如果移除了前部at,信息就会以空格开头,因为只移去了最前面的at,但at后紧跟随一个空格
 	if config.GetRemoveAt() {
