@@ -906,6 +906,8 @@ func getHandlerByName(handlerName string) (interface{}, bool) {
 		return C2CMsgRejectHandler(), true
 	case "C2CMsgReceiveHandler": //用户请求开启机器人C2C主动推送
 		return C2CMsgReceiveHandler(), true
+	case "GroupMessageEventHandler": // 普通群消息（无需@）
+		return GroupMessageEventHandler(), true
 	default:
 		log.Printf("Unknown handler: %s\n", handlerName)
 		return nil, false
@@ -1000,5 +1002,22 @@ func UnionFanout(base gin.HandlerFunc) gin.HandlerFunc {
 
 		// 4) 继续执行原有处理器（本地业务逻辑）
 		base(c)
+	}
+}
+
+// GroupMessageEventHandler 实现处理 普通群消息（无需@） 的回调
+func GroupMessageEventHandler() event.GroupMessageEventHandler {
+	return func(event *dto.WSPayload, data *dto.WSGroupMessageData) error {
+		if config.GetEnableChangeWord() {
+			data.Content = acnode.CheckWordIN(data.Content)
+			if data.Author.Username != "" {
+				data.Author.Username = acnode.CheckWordIN(data.Author.Username)
+			}
+		}
+		go p.ProcessGroupNormalMessage(data)
+		if !config.GetDisableErrorChan() {
+			botstats.RecordMessageReceived()
+		}
+		return nil
 	}
 }
