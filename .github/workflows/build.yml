@@ -111,8 +111,10 @@ jobs:
       - name: Install UPX
         run: sudo apt-get install -y upx-ucl
 
-      - name: Compress binary with UPX
-        run: upx --best gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
+      - name: Compress with UPX (ultra brute)
+        run: |
+          upx --ultra-brute gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }} || \
+          upx --best gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
