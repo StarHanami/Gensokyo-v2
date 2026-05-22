@@ -241,6 +241,8 @@ todo,正在施工中
 <details>
 <summary>目前支持的 Intent</summary>
 
+#### 允许向后端推送的事件类型
+- 相较于原版新增了 **GroupMessageEventhandler** 事件
 
 | 事件名称 | 代表含义 |
 | -------- | ------- |
