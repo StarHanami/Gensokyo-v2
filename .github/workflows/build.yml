@@ -3,6 +3,13 @@ name: Build Gensokyo (Multi-Platform)
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'frontend/**'
+      - 'config.yml'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
 
 jobs:
