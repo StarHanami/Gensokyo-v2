@@ -236,6 +236,30 @@ todo,正在施工中
 | 通知事件 | [接收到离线文件] |
 
 
+
+#### 目前支持的 Intent
+
+| 事件名称 | 代表含义 |
+| -------- | ------- |
+| ATmessageEventHandler | 频道at消息 |
+| DirectMessageHandler | 私域频道私信(dms) |
+| ReadyHandler | 连接成功 |
+| ErrorNotifyHandler | 连接关闭 |
+| GuildEventHandler | 频道事件 |
+| MemberEventHandler | 频道成员新增 |
+| ChannelEventHandler | 频道事件 |
+| CreateMessageHandler | 频道不at消息 |
+| InteractionHandler | 频道互动回应 卡片按钮data回调事件 |
+| GroupATMessageEventHandler | 群at消息 |
+| GroupMessageEventhandler | 群普通消息 |
+| C2CMessageEventHandler | 群私聊 |
+| ThreadEventHandler | 频道发帖事件 |
+| FriendAddEventHandler | 被添加好友 |
+| FriendDelEventHandler | 被删除好友 |
+| C2CMsgRejectHandler | 用户拒绝(C2C)消息推送 |
+| C2CMsgReceiveHandler | 用户同意(C2C)消息推送 |
+
+
 </details>
 
 ## 关于 ISSUE
