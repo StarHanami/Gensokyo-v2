@@ -113,7 +113,7 @@ jobs:
 
       - name: Compress with UPX
         run: |
-          upx --best gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
+          upx -5 gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
