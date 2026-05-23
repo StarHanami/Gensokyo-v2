@@ -77,7 +77,7 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 	}
 
 	// 前置兼容：始终将 <@xxx> 转换为 OneBot V11 标准 CQ 码
-	messageText = preprocessCQCode(data.Content)
+	messageText := preprocessCQCode(data.Content)
 
 	GetDisableErrorChan := config.GetDisableErrorChan()
 
