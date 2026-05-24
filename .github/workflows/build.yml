@@ -11,11 +11,7 @@ on:
       - 'config.yml'
       - '.github/workflows/build.yml'
   workflow_dispatch:
-    inputs:
-      release_name:
-        description: 'Release 名称（留空则不创建 Release）'
-        required: false
-        default: ''
+
 
 jobs:
   # 1. 单独构建前端，只执行一次
@@ -127,36 +123,3 @@ jobs:
         with:
           name: gensokyo-${{ matrix.os }}-${{ matrix.goarch }}
           path: gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
-
-  # 3. 手动 Release（在 workflow_dispatch 时输入 release_name 触发）
-  release:
-    needs: build-binaries
-    if: github.event_name == 'workflow_dispatch' && inputs.release_name != ''
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Extract release notes from CHANGELOG
-        run: |
-          python3 -c "import re,sys;c=open('CHANGELOG.md').read();p='## ${{ inputs.release_name }}(.+?)(?=## |\Z)';m=re.search(p,c,re.DOTALL);open('release-notes.md','w').write(m.group(1).strip() if m else '（请更新 CHANGELOG.md）')"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ inputs.release_name }}
-          name: ${{ inputs.release_name }}
-          body_path: release-notes.md
-          files: |
-            artifacts/gensokyo-linux-amd64/gensokyo-linux-amd64
-            artifacts/gensokyo-linux-386/gensokyo-linux-386
-            artifacts/gensokyo-linux-arm64/gensokyo-linux-arm64
-            artifacts/gensokyo-windows-amd64/gensokyo-windows-amd64.exe
-            artifacts/gensokyo-windows-386/gensokyo-windows-386.exe
-          draft: false
-          prerelease: false
