@@ -12,11 +12,17 @@ import (
 	"github.com/tencent-connect/botgo/openapi"
 )
 
+type AvatarData struct {
+	Message string `json:"message"`
+	UserID  int64  `json:"user_id"`
+}
+
 type GetAvatarResponse struct {
+	Data    AvatarData  `json:"data"`
 	Message string      `json:"message"`
 	RetCode int         `json:"retcode"`
+	Status  string      `json:"status"`
 	Echo    interface{} `json:"echo"`
-	UserID  int64       `json:"user_id"`
 }
 
 func init() {
@@ -48,12 +54,16 @@ func GetAvatar(client callapi.Client, api openapi.OpenAPI, apiv2 openapi.OpenAPI
 
 	avatarurl, _ := GenerateAvatarURLV2(originalUserID)
 
-	useridstr := message.Params.UserID.(string)
+	userid64, _ := strconv.ParseInt(message.Params.UserID.(string), 10, 64)
 
-	response.Message = avatarurl
+	response.Data = AvatarData{
+		Message: avatarurl,
+		UserID:  userid64,
+	}
+	response.Message = ""
 	response.RetCode = 0
+	response.Status = "ok"
 	response.Echo = message.Echo
-	response.UserID, _ = strconv.ParseInt(useridstr, 10, 64)
 
 	outputMap := structToMap(response)
 
