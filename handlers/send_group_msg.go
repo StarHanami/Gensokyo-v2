@@ -493,6 +493,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 					// 定义一个map来存储关键字
 					keyMap := map[string]bool{
 						"markdown":      true,
+						"embed":         true,
 						"qqmusic":       true,
 						"local_image":   true,
 						"local_record":  true,
