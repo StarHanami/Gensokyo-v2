@@ -282,7 +282,6 @@ func HandleSendPrivateMsg(client callapi.Client, api openapi.OpenAPI, apiv2 open
 				// 进行类型断言
 				richMediaMessage, ok := groupReply.(*dto.RichMediaMessage)
 				if !ok {
-					mylog.Printf("Error: Expected RichMediaMessage type for key %s.", key)
 					// 定义一个map来存储关键字
 					keyMap := map[string]bool{
 						"markdown":      true,
