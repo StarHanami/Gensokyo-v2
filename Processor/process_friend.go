@@ -2,8 +2,10 @@ package Processor
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hoshinonyaruko/gensokyo/config"
+	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/tencent-connect/botgo/dto"
@@ -51,6 +53,9 @@ func (p *Processors) ProcessFriendAdd(data *dto.WSFriendAddData) error {
 
 	// 2. 时间戳转换
 	timestampInt64 := int64(data.Timestamp)
+
+	// 存储 event_id，使后续被动消息可携带 event_id 发送（C2C 场景 groupid 传 0）
+	echo.AddEvnetID(strconv.FormatUint(p.Settings.AppID, 10), 0, data.EventID)
 
 	// 3. 获取自身 ID
 	var selfid64 int64
