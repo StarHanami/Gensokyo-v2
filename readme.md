@@ -35,7 +35,7 @@ _✨ 基于 [OneBot](https://github.com/howmanybots/onebot/blob/master/README.md
   ·
   <a href="https://github.com/hoshinonyaruko/gensokyo/releases">下载</a>
   ·
-  <a href="https://github.com/hoshinonyaruko/gensokyo/releases">开始使用</a>
+  <a href="/docs/开始使用.md">开始使用</a>
   ·
   <a href="https://github.com/hoshinonyaruko/gensokyo/blob/master/CONTRIBUTING.md">参与贡献</a>
 </p>
@@ -43,71 +43,47 @@ _✨ 基于 [OneBot](https://github.com/howmanybots/onebot/blob/master/README.md
   <a href="https://gensokyo.bot">项目主页:gensokyo.bot</a>
 </p>
 
-## 引用
-- [`tencent-connect/botgo`](https://github.com/tencent-connect/botgo): 本项目引用了此项目,并做了一些改动.
-
 ## 介绍
-gensokyo兼容 [OneBot-v11](https://github.com/botuniverse/onebot-11) ，并在其基础上做了一些扩展，详情请看 OneBot 的文档。
 
-Gensokyo文档:[开始使用](/docs/开始使用.md)
+Gensokyo 是一款兼容 [OneBot V11](https://github.com/botuniverse/onebot-11) 标准的 QQ 机器人服务端，将 QQ 官方 API 的 WebSocket 事件和 HTTP 接口转换为 OneBot V11 协议。
 
-可将官方的websocket和api转换至onebotv11标准,
+**支持连接的客户端框架：** Koishi、NoneBot2、Trss、Zerobot、MiraiCQ、Hoshino、Tata、派蒙、炸毛、早苗、Yobot、Mirai(Overflow) 等所有支持 OneBot V11 适配器的项目。
 
-支持连接koishi,nonebot2,trss,zerobot,MiraiCQ,hoshino..
+实现插件开发和用户开发者无需重新开发，**复用过往生态的插件和使用体验**。
 
-支持连接tata,派蒙,炸毛,早苗,yobot...
+交流群：**196173384**
 
-支持连接Mirai(Overflow)...
+## 快速开始
 
-可以与支持onebotV11适配器的项目相连接使用.
+1. 前往 [Releases](https://github.com/hoshinonyaruko/gensokyo/releases) 下载对应系统的二进制文件
+2. 参考 [开始使用](/docs/开始使用.md) 创建机器人并配置
+3. 启动 gensokyo，连接你的 OneBot V11 客户端
 
-实现插件开发和用户开发者无需重新开发,复用过往生态的插件和使用体验.
+## 功能亮点
 
-持续完善中.....交流群:196173384
+- ✅ 兼容 OneBot V11 — HTTP API、反向 HTTP POST、正向 WebSocket、反向 WebSocket
+- ✅ 多 WS 地址连接
+- ✅ 频道虚拟成群事件、私信虚拟成群/频道事件
+- ✅ WebUI 管理界面
+- ✅ 指令黑白名单、URL 自动转换
+- ✅ 可自定义图片压缩/图床服务
+- ✅ 支持文字、图片、语音、视频、Markdown 等多种消息类型
+- ✅ 主动信息失败自动转被动
+- ✅ 完善的重连机制
 
-欢迎测试,询问任何有关使用的问题,有问必答,有难必帮~
+## 文档
 
-[Gensokyo文档](/docs/更多文档.md) — 包含 markdown 定义、Embed 消息、额外 API 等全部文档
+- [开始使用](/docs/开始使用.md) — 注册机器人、配置、启动
+- [API 介绍](/docs/api介绍.md) — 支持的 API 列表与扩展
+- [Markdown 消息](/docs/文档-markdown消息.md) — Markdown 卡片消息说明
+- [更多文档](/docs/更多文档.md) — 完整文档索引
 
-## 特别鸣谢
+## CQ 码与 API 支持
 
-- [`mnixry/nonebot-plugin-gocqhttp`](https://github.com/mnixry/nonebot-plugin-gocqhttp/): 本项目采用了mnixry编写的前端,并实现了与它对应的,基于qq官方api的后端api.
-- 特别鸣谢[`dk 盾`](https://www.dkdun.cn/),友情赞助服务器资源
-
-### 接口
-
-- [x] HTTP API
-- [x] 反向 HTTP POST
-- [x] 正向 WebSocket
-- [x] 反向 WebSocket
-
-### 拓展支持
-
-> 拓展 API 可前往 [文档](/docs/api介绍.md) 查看
-
-- [x] 连接多个ws地址
-- [x] 将频道虚拟成群事件
-- [x] 将私信虚拟成频道或群事件
-- [x] webui,可以在webui修改配置,查看频道列表,发送信息
-- [x] 方便过审的指令黑白名单
-- [x] 自动url转换(自备域名)
-- [x] 可自定义图片压缩\图床服务
-- [x] 可编辑的数据库
-- [x] 支持array和信息段
-- [x] 文字,图片,语音,视频,MD,支持多种类型发送
-- [x] 支持全域,频道,频道私聊,群,群私聊
-- [x] 主动信息失败自动转被动,提高信息传达可靠性
-- [x] 提前于官方支持群列表 群成员 api
-- [x] 完善的重连,健壮的连接能力.
-- [x] 支持[CQ:markdown,data=] Markdown发送
-- [x] [`markdown文档`](/docs/文档-markdown消息.md)
-- [x] 持续更新~
-
-
-### 实现
+### 已实现 CQ 码
 
 <details>
-<summary>已实现 CQ 码</summary>
+<summary>展开查看</summary>
 
 #### 符合 OneBot 标准的 CQ 码
 
@@ -278,3 +254,12 @@ todo,正在施工中
 ## 性能
 
 10mb内存占用 端口错开可多开 稳定运行无报错
+
+## 特别鸣谢
+
+- [`mnixry/nonebot-plugin-gocqhttp`](https://github.com/mnixry/nonebot-plugin-gocqhttp/): 本项目采用了mnixry编写的前端,并实现了与它对应的,基于qq官方api的后端api.
+- 特别鸣谢[`dk 盾`](https://www.dkdun.cn/),友情赞助服务器资源
+
+## 引用
+
+- [`tencent-connect/botgo`](https://github.com/tencent-connect/botgo): 本项目引用了此项目,并做了一些改动.
