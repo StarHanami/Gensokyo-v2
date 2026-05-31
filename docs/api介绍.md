@@ -99,3 +99,14 @@ async def handler(event: GroupMessageEvent):
 ```python
 event.json()  # 查看完整字段
 ```
+
+### 非自身 @ 处理
+
+在 `GROUP_MESSAGE_CREATE`（普通群消息）中，若内容包含对其他用户/机器人的 `@`，Gensokyo 会自动将原始 `<@OpenID>` 替换为标准的 `[CQ:at,qq=虚拟ID]` 格式，并建立 OpenID ↔ 虚拟 ID 的映射，确保同一用户多次出现的 @ 虚拟 ID 始终一致。
+
+**示例：**
+
+```
+接收: <@B1FE883FFF424245AFD44DE3BB61D232> 贴贴
+发送: [CQ:at,qq=713011248] 贴贴
+```

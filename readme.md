@@ -64,6 +64,7 @@ Gensokyo 是一款兼容 [OneBot V11](https://github.com/botuniverse/onebot-11) 
 - ✅ 兼容 OneBot V11 — HTTP API、反向 HTTP POST、正向 WebSocket、反向 WebSocket
 - ✅ 群聊非@消息支持（GroupMessageEventHandler）
 - ✅ 群聊消息自动剔除 @机器人字段
+- ✅ 非自身 @ 自动转为 `[CQ:at,qq=虚拟ID]` 格式
 - ✅ 按钮权限中虚拟数字 ID 自动转化为 QQ 官方 OpenID
 - ✅ 扩展 API：`get_avatar`（获取头像直链）
 - ✅ 全场景 event_id 存储，支持被动消息
