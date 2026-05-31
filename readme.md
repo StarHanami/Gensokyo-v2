@@ -131,10 +131,10 @@ todo,正在施工中
 <summary>已实现 API</summary>
 
 > 新增了如下 **API**</br>
-> **get_avatar**（头像直链）
-> **get_robot_share_link**（分享链接）
-> **send_private_msg_wakeup**（被动唤醒）
-> **put_interaction**（按钮回调）
+> **get_avatar**（头像直链）  
+> **get_robot_share_link**（分享链接）  
+> **send_private_msg_wakeup**（被动唤醒）  
+> **put_interaction**（按钮回调）  
 
 #### 符合 OneBot 标准的 API
 
