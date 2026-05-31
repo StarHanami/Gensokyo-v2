@@ -92,7 +92,7 @@ Gensokyo 是一款兼容 [OneBot V11](https://github.com/botuniverse/onebot-11) 
 <details>
 <summary>展开查看</summary>
 
-> 新增了如下 **CQ码**
+> 新增了如下 **CQ码**</br>
 > **[CQ:avatar]** 头像获取
 
 #### 符合 OneBot 标准的 CQ 码
