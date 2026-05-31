@@ -914,6 +914,8 @@ func isIPAddress(address string) bool {
 
 // at处理
 func transformMessageTextAt(messageText string, groupid string) string {
+	// 保存原始内容，用于纯 at 消息回退
+	originalText := messageText
 	// DoNotReplaceAppid=false(默认频道bot,需要自己at自己时,否则改成true)
 	if !config.GetDoNotReplaceAppid() {
 		// 首先，将AppID替换为BotID
@@ -942,20 +944,21 @@ func transformMessageTextAt(messageText string, groupid string) string {
 				return "<@!" + submatches[1] + ">"
 			}
 
-			// 在这里检查 GetRemoveBotAtGroup 和 realUserID 的长度
-			if config.GetRemoveBotAtGroup() && len(realUserID) == 32 {
-				return ""
-			}
-
 			return "<@!" + realUserID + ">"
 		}
 		return m
 	})
+	// 如果全部 at 被移除后内容为空，说明消息仅包含 at 自身，退回原始 at 文本
+	if strings.TrimSpace(messageText) == "" {
+		messageText = originalText
+	}
 	return messageText
 }
 
 // at处理
 func transformMessageTextAtNoGroupID(messageText string) string {
+	// 保存原始内容，用于纯 at 消息回退
+	originalText := messageText
 	// DoNotReplaceAppid=false(默认频道bot,需要自己at自己时,否则改成true)
 	if !config.GetDoNotReplaceAppid() {
 		// 首先，将AppID替换为BotID
@@ -985,15 +988,14 @@ func transformMessageTextAtNoGroupID(messageText string) string {
 				return "<@!" + submatches[1] + ">"
 			}
 
-			// 在这里检查 GetRemoveBotAtGroup 和 realUserID 的长度
-			if config.GetRemoveBotAtGroup() && len(realUserID) == 32 {
-				return ""
-			}
-
 			return "<@!" + realUserID + ">"
 		}
 		return m
 	})
+	// 如果全部 at 被移除后内容为空，退回原始 at 文本
+	if strings.TrimSpace(messageText) == "" {
+		messageText = originalText
+	}
 	return messageText
 }
 
