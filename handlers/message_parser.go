@@ -1793,6 +1793,24 @@ func ResolvePlaceholderUserIDs(kb *keyboard.MessageKeyboard, realUserOpenID stri
 	}
 }
 
+// ResolveMarkdownAtMentions 将 markdown 内容中的 [CQ:at,qq=数字] 替换为
+// QQ API 官方 @ 语法 <qqbot-at-user id="OpenID" />，使其在群聊/频道中可渲染为蓝色 @。
+func ResolveMarkdownAtMentions(content string) string {
+	re := regexp.MustCompile(`\[CQ:at,qq=(\d+)\]`)
+	return re.ReplaceAllStringFunc(content, func(m string) string {
+		submatches := re.FindStringSubmatch(m)
+		if len(submatches) > 1 {
+			realUserID, err := idmap.RetrieveRowByIDv2(submatches[1])
+			if err != nil {
+				mylog.Printf("Error resolving virtual ID in markdown: %v", err)
+				return m
+			}
+			return "<qqbot-at-user id=\"" + realUserID + "\" />"
+		}
+		return m
+	})
+}
+
 func parseQQMuiscMDData(musicid string) (*dto.Markdown, *keyboard.MessageKeyboard, error) {
 	info, err := QQMusicSongInfo(musicid)
 	if err != nil {

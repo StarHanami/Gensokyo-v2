@@ -501,6 +501,10 @@ func GenerateReplyMessage(id string, foundItems map[string][]string, messageText
 			mylog.Printf("failed to parseMDData: %v", err)
 			return nil, false
 		}
+		// 将 markdown 内容中的 CQ at 码转换为 QQ @ 语法
+		if markdown != nil && markdown.Content != "" {
+			markdown.Content = ResolveMarkdownAtMentions(markdown.Content)
+		}
 		msgtocreate := &dto.MessageToCreate{
 			MsgID:    id,
 			MsgSeq:   msgseq,

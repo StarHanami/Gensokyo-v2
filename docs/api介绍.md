@@ -119,7 +119,25 @@ event.json()  # 查看完整字段
 **规则：**
 - 入站 `@bot` → 从 content 中剥离（`to_me = true`）
 - 入站 `@其他人` → 转为 `[CQ:at,qq=虚拟ID]`
-- 出站 `[CQ:at,qq=数字]` → 转为 `<@!OpenID>`（无论是否为 bot 自身，全部放行）
+- 出站 `[CQ:at,qq=数字]` → 转为 `<qqbot-at-user id="OpenID" />`（最新 QQ 格式，频道场景渲染为蓝色 @）
+- 群聊纯文本出站消息中 @ 不渲染（API 限制）
+
+### Markdown 中的 @ 能力
+
+在 Markdown 卡片（`msg_type=2`）内容中嵌入 `[CQ:at,qq=数字]`，Gensokyo 会自动将其转换为 QQ API 的 `<qqbot-at-user>` 标签，在群聊和频道中渲染为蓝色 @。
+
+**nonebot2 示例：**
+
+```python
+from nonebot import on_command
+from nonebot.adapters.onebot.v11 import Bot, Event, Message
+
+@on_command("md_at").handle()
+async def _(bot: Bot, event: Event):
+    md_content = f"你好 [CQ:at,qq={event.user_id}]，欢迎使用！"
+    md_seg = {"type":"markdown","data":{"data":md_content}}
+    await bot.send(event, Message(md_seg))
+```
 
 ### Sender.Nickname 自动填充
 

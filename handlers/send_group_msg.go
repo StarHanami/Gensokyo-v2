@@ -1284,6 +1284,11 @@ func generateGroupMessage(id string, eventid string, foundItems map[string][]str
 			markdown.Content = mdutil.ReplaceQQBotAtUserIDUnionToRaw(markdown.Content)
 		}
 
+		// 将 markdown 内容中的 CQ at 码转换为 QQ @ 语法
+		if markdown != nil && markdown.Content != "" {
+			markdown.Content = ResolveMarkdownAtMentions(markdown.Content)
+		}
+
 		return &dto.MessageToCreate{
 			Content:  "markdown",
 			MsgID:    id,
@@ -1893,6 +1898,11 @@ func generatePrivateMessage(id string, eventid string, foundItems map[string][]s
 		if keyboard != nil {
 			userOpenID := idmap.ResolveOriginalID(userid)
 			ResolvePlaceholderUserIDs(keyboard, userOpenID)
+		}
+
+		// 将 markdown 内容中的 CQ at 码转换为 QQ @ 语法
+		if markdown != nil && markdown.Content != "" {
+			markdown.Content = ResolveMarkdownAtMentions(markdown.Content)
 		}
 
 		return &dto.MessageToCreate{
