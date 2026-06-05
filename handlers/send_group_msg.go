@@ -423,7 +423,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 
 			// 处理 [CQ:reply,id=数字] → message_reference
 			if replyIDs, ok := foundItems["reply_msg_id"]; ok && len(replyIDs) > 0 {
-				realReplyID, err := idmap.RetrieveCachev2(replyIDs[0])
+				realReplyID, err := idmap.RetrieveRowByCachev2(replyIDs[0])
 				if err != nil {
 					if cacheID, ok := echo.GetCacheIDFromMemoryByRowID(replyIDs[0]); ok {
 						realReplyID = cacheID
