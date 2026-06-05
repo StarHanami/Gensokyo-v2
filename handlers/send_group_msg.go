@@ -408,8 +408,9 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			messageText = ""
 		}
 
-		// 优先发送文本信息
-		if messageText != "" || len(foundItems["reply_msg_id"]) > 0 {
+		// 优先发送文本信息（有 reply 但同时也发 markdown 时，reply 合并到 markdown 里）
+		hasMarkdown := len(foundItems["markdown"]) > 0
+		if messageText != "" || (len(foundItems["reply_msg_id"]) > 0 && !hasMarkdown) {
 			msgseq := echo.GetMappingSeq(messageID)
 			echo.AddMappingSeq(messageID, msgseq+1)
 			groupReply := generateGroupMessage(messageID, eventID, nil, messageText, msgseq+1, apiv2, message.Params.GroupID.(string))
@@ -523,6 +524,15 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 						if !ok {
 							mylog.Println("Error: Expected MessageToCreate type.")
 							return "", nil // 或其他错误处理
+						}
+						// 将 reply 引用合并到 markdown 消息中
+						if replyIDs, ok := foundItems["reply_msg_id"]; ok && len(replyIDs) > 0 && key == "markdown" {
+							if messageID != "" {
+								groupMessage.MessageReference = &dto.MessageReference{
+									MessageID:             messageID,
+									IgnoreGetMessageError: true,
+								}
+							}
 						}
 						//重新为err赋值
 						resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
