@@ -861,6 +861,17 @@ func generateGroupMessage(id string, eventid string, foundItems map[string][]str
 			mylog.Printf("音频转码ing")
 		}
 
+		if RecordData == nil || len(RecordData) == 0 {
+			mylog.Errorf("语音转码失败，返回空数据")
+			return &dto.MessageToCreate{
+				Content: "错误: 语音转码失败，请检查 ffmpeg 是否安装",
+				MsgID:   id,
+				EventID: eventid,
+				MsgSeq:  msgseq,
+				MsgType: 0, // 默认文本类型
+			}
+		}
+
 		base64Encoded := base64.StdEncoding.EncodeToString(RecordData)
 		if config.GetUploadPicV2Base64() {
 			// 直接上传语音返回 MessageToCreate type=7
@@ -1078,6 +1089,16 @@ func generateGroupMessage(id string, eventid string, foundItems map[string][]str
 				}
 				fileRecordData = silk.EncoderSilk(fileRecordData)
 				mylog.Printf("音频转码ing")
+			}
+			if len(fileRecordData) == 0 {
+				mylog.Errorf("语音转码失败，返回空数据")
+				return &dto.MessageToCreate{
+					Content: "错误: 语音转码失败，请检查 ffmpeg 是否安装",
+					MsgID:   id,
+					EventID: eventid,
+					MsgSeq:  msgseq,
+					MsgType: 0, // 默认文本类型
+				}
 			}
 			base64Encoded := base64.StdEncoding.EncodeToString(fileRecordData)
 			if config.GetUploadPicV2Base64() {
@@ -1476,6 +1497,17 @@ func generatePrivateMessage(id string, eventid string, foundItems map[string][]s
 			mylog.Printf("音频转码ing")
 		}
 
+		if RecordData == nil || len(RecordData) == 0 {
+			mylog.Errorf("语音转码失败，返回空数据")
+			return &dto.MessageToCreate{
+				Content: "错误: 语音转码失败，请检查 ffmpeg 是否安装",
+				MsgID:   id,
+				EventID: eventid,
+				MsgSeq:  msgseq,
+				MsgType: 0, // 默认文本类型
+			}
+		}
+
 		base64Encoded := base64.StdEncoding.EncodeToString(RecordData)
 		if config.GetUploadPicV2Base64() {
 			// 直接上传语音返回 MessageToCreate type=7
@@ -1693,6 +1725,16 @@ func generatePrivateMessage(id string, eventid string, foundItems map[string][]s
 				}
 				fileRecordData = silk.EncoderSilk(fileRecordData)
 				mylog.Printf("音频转码ing")
+			}
+			if len(fileRecordData) == 0 {
+				mylog.Errorf("语音转码失败，返回空数据")
+				return &dto.MessageToCreate{
+					Content: "错误: 语音转码失败，请检查 ffmpeg 是否安装",
+					MsgID:   id,
+					EventID: eventid,
+					MsgSeq:  msgseq,
+					MsgType: 0, // 默认文本类型
+				}
 			}
 			base64Encoded := base64.StdEncoding.EncodeToString(fileRecordData)
 			if config.GetUploadPicV2Base64() {
