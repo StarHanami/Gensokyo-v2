@@ -163,6 +163,24 @@ data 支持传 `string`（纯文本）、`base64://` 编码的 JSON，或 `map` 
 
 注意：`{{}}` 中不能使用 `![]()` 这类 Markdown 格式关键字。
 
+### 图片自动上传
+
+Markdown 内容中的 `![](path)` 图片，Gensokyo 会自动处理：
+
+| path 类型 | 行为 |
+|-----------|------|
+| `https://...` / `http://...` | 直接保留原链接 |
+| 本地文件路径 | 读取文件 → base64 上传到 QQ CDN → 替换为 CDN 直链 |
+
+```markdown
+# URL 直接保留
+![](https://example.com/image.png)
+
+# 本地文件自动上传
+![](C:\Users\xxx\Pictures\photo.png)
+![](file:///C:/Users/xxx/Pictures/photo.png)
+```
+
 ## 参考
 
 - [QQ 官方 Markdown 文档](https://bot.q.qq.com/wiki/develop/api/openapi/message/post_keyboard_messages.html)

@@ -184,6 +184,27 @@ data 支持三种形式：
 → <qqbot-at-user id="真实OpenID" />
 ```
 
+### Markdown 中的图片
+
+在 Markdown 文本内容中使用 `![](path)` 嵌入图片，Gensokyo 自动处理：
+
+| path 类型 | 行为 |
+|-----------|------|
+| `https://...` / `http://...` | 直接保留，不做处理 |
+| `file:///C:/...` 或 `C:/...` | 读取本地文件 → base64 上传 QQ CDN → 替换为 CDN URL |
+| 其他本地路径 | 同上 |
+
+**示例：**
+
+```markdown
+### 标题
+这是说明文字
+
+![](https://example.com/public.png)          ← 保留 URL
+![](C:\\Users\\xxx\\Pictures\\photo.png)     ← 自动上传
+![](file:///C:/Users/xxx/Pictures/photo.png)  ← 自动上传
+```
+
 ## 消息事件扩展字段
 
 | 字段 | 类型 | 说明 |
