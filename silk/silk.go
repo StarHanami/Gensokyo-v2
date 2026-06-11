@@ -137,6 +137,42 @@ func createDirectoryIfNotExists(directoryPath string) error {
 	return nil
 }
 
+// detectAudioFormat 通过魔数检测音频格式，返回格式名称
+func detectAudioFormat(data []byte) string {
+	if len(data) < 4 {
+		return "unknown"
+	}
+	// WAV
+	if len(data) >= 12 && bytes.Equal(data[0:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WAVE")) {
+		return "WAV"
+	}
+	// MP3 (MPEG ADTS, layer III sync word)
+	if data[0] == 0xFF && (data[1]&0xE0) == 0xE0 {
+		return "MP3"
+	}
+	// OGG
+	if bytes.HasPrefix(data, []byte("OggS")) {
+		return "OGG"
+	}
+	// FLAC
+	if bytes.HasPrefix(data, []byte("fLaC")) {
+		return "FLAC"
+	}
+	// AMR
+	if bytes.HasPrefix(data, []byte("#!AMR")) {
+		return "AMR"
+	}
+	// SILK (Tencent variant)
+	if bytes.HasPrefix(data, []byte("\x02#!SILK_V3")) || bytes.HasPrefix(data, []byte("#!SILK_V3")) {
+		return "SILK"
+	}
+	// MP4/AAC
+	if len(data) >= 12 && bytes.Equal(data[4:8], []byte("ftyp")) {
+		return "MP4/AAC"
+	}
+	return fmt.Sprintf("unknown(hex:%X)", data[:min(16, len(data))])
+}
+
 // wavToPcm 直接从 WAV 数据中提取 PCM 数据，无需 ffmpeg
 // 仅支持 16-bit 单声道 PCM WAV，且采样率需匹配 targetSampleRate
 // 如果数据不是 WAV 或不满足条件，返回 nil
@@ -216,7 +252,11 @@ func encode(record []byte, tempName string) (silkWav []byte) {
 			return nil
 		}
 	} else {
-		// 2. 非 WAV 或不匹配，尝试使用 ffmpeg 转换
+		// 2. 非 WAV 或不匹配，检测实际格式
+		audioFmt := detectAudioFormat(record)
+		mylog.Printf("音频格式检测: %s", audioFmt)
+
+		// 尝试使用 ffmpeg 转换
 		rawPath := path.Join(silkCachePath, tempName+".raw")
 		err = os.WriteFile(rawPath, record, os.ModePerm)
 		if err != nil {
@@ -230,7 +270,7 @@ func encode(record []byte, tempName string) (silkWav []byte) {
 			cmd.Err = nil
 		}
 		if err = cmd.Run(); err != nil {
-			mylog.Errorf("convert pcm file error: ffmpeg 未安装或输入格式不受支持")
+			mylog.Errorf("convert pcm file error: ffmpeg 未安装或输入格式(%s)不受支持", audioFmt)
 			return nil
 		}
 	}
