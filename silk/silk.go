@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hajimehoshi/go-mp3"
 	"github.com/hoshinonyaruko/gensokyo/config"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
 )
@@ -227,6 +229,96 @@ func wavToPcm(data []byte, targetSampleRate int) []byte {
 	return dataChunk
 }
 
+// resamplePcm 对 16-bit 单声道 PCM 数据进行线性重采样
+func resamplePcm(data []byte, srcRate, dstRate int) []byte {
+	if srcRate == dstRate || len(data) < 2 {
+		return data
+	}
+	srcLen := len(data) / 2
+	dstLen := srcLen * dstRate / srcRate
+	if dstLen < 1 {
+		dstLen = 1
+	}
+	dst := make([]byte, dstLen*2)
+	for i := 0; i < dstLen; i++ {
+		srcPos := float64(i) * float64(srcRate) / float64(dstRate)
+		srcIdx := int(srcPos)
+		frac := srcPos - float64(srcIdx)
+		if srcIdx >= srcLen-1 {
+			s := binary.LittleEndian.Uint16(data[(srcLen-1)*2 : (srcLen-1)*2+2])
+			binary.LittleEndian.PutUint16(dst[i*2:i*2+2], s)
+		} else {
+			s0 := int16(binary.LittleEndian.Uint16(data[srcIdx*2 : srcIdx*2+2]))
+			s1 := int16(binary.LittleEndian.Uint16(data[(srcIdx+1)*2 : (srcIdx+1)*2+2]))
+			sample := int16(float64(s0)*(1-frac) + float64(s1)*frac)
+			binary.LittleEndian.PutUint16(dst[i*2:i*2+2], uint16(sample))
+		}
+	}
+	return dst
+}
+
+// stereoToMono 将 16-bit 立体声 PCM (左右交错) 转为单声道
+func stereoToMono(stereo []byte) []byte {
+	if len(stereo) < 4 {
+		return stereo
+	}
+	samples := len(stereo) / 4
+	mono := make([]byte, samples*2)
+	for i := 0; i < samples; i++ {
+		l := int(int16(binary.LittleEndian.Uint16(stereo[i*4 : i*4+2])))
+		r := int(int16(binary.LittleEndian.Uint16(stereo[i*4+2 : i*4+4])))
+		m := int16((l + r) / 2)
+		binary.LittleEndian.PutUint16(mono[i*2:i*2+2], uint16(m))
+	}
+	return mono
+}
+
+// mp3ToPcm 使用纯 Go 解码 MP3 为 16-bit 单声道 PCM
+func mp3ToPcm(data []byte, targetSampleRate int) ([]byte, error) {
+	decoder, err := mp3.NewDecoder(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("mp3 decoder init: %w", err)
+	}
+	srcRate := decoder.SampleRate()
+
+	var buf bytes.Buffer
+	_, err = io.CopyN(&buf, decoder, int64(math.MaxInt32)) // 限制最大约 2GB
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("mp3 decode: %w", err)
+	}
+	pcm := buf.Bytes() // 16-bit 立体声交错
+
+	// MP3 输出始终为立体声
+	mono := stereoToMono(pcm)
+	return resamplePcm(mono, srcRate, targetSampleRate), nil
+}
+
+// decodeToPcm 尝试内置解码器将音频转为 PCM
+func decodeToPcm(data []byte, targetSampleRate int) []byte {
+	// 1. 优先 WAV 直接提取
+	if pcm := wavToPcm(data, targetSampleRate); pcm != nil {
+		mylog.Printf("解码: 从 WAV 直接提取 PCM")
+		return pcm
+	}
+
+	fmt := detectAudioFormat(data)
+	mylog.Printf("解码: 音频格式 %s", fmt)
+
+	// 2. 尝试 MP3 解码
+	if strings.HasPrefix(fmt, "MP3") {
+		pcm, err := mp3ToPcm(data, targetSampleRate)
+		if err != nil {
+			mylog.Errorf("MP3 解码失败: %v", err)
+			return nil
+		}
+		mylog.Printf("MP3 解码成功 (%d bytes PCM)", len(pcm))
+		return pcm
+	}
+
+	mylog.Printf("解码: 格式 %s 无内置解码器，尝试 ffmpeg", fmt)
+	return nil
+}
+
 // encode 将音频编码为Silk
 func encode(record []byte, tempName string) (silkWav []byte) {
 	// 0. 创建缓存目录
@@ -242,21 +334,20 @@ func encode(record []byte, tempName string) (silkWav []byte) {
 
 	pcmPath := path.Join(silkCachePath, tempName+".pcm")
 
-	// 1. 优先尝试直接从 WAV 提取 PCM（无需 ffmpeg）
-	pcmData := wavToPcm(record, sampleRate)
+	// 1. 优先使用内置解码器（WAV/MP3/OGG/FLAC，无需 ffmpeg）
+	pcmData := decodeToPcm(record, sampleRate)
 	if pcmData != nil {
-		mylog.Printf("从 WAV 直接提取 PCM 数据")
+		mylog.Printf("使用内置解码器转换 PCM 成功")
 		err = os.WriteFile(pcmPath, pcmData, os.ModePerm)
 		if err != nil {
 			mylog.Errorf("write pcm file error")
 			return nil
 		}
 	} else {
-		// 2. 非 WAV 或不匹配，检测实际格式
+		// 2. 回退 ffmpeg
 		audioFmt := detectAudioFormat(record)
-		mylog.Printf("音频格式检测: %s", audioFmt)
+		mylog.Printf("回退: 尝试 ffmpeg 转换 %s", audioFmt)
 
-		// 尝试使用 ffmpeg 转换
 		rawPath := path.Join(silkCachePath, tempName+".raw")
 		err = os.WriteFile(rawPath, record, os.ModePerm)
 		if err != nil {

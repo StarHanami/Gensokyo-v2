@@ -25,6 +25,7 @@ require (
 	github.com/clbanning/mxj v1.8.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
