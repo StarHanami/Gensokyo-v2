@@ -1200,33 +1200,55 @@ func UpdateVirtualValue(oldRowValue, newRowValue int64) error {
 	return db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(BucketName))
 
-		// 查找旧虚拟值对应的真实值
-		oldRowKey := fmt.Sprintf("row-%d", oldRowValue)
+		// 双查反向 key（新格式优先，旧格式兼容）
+		oldRowKey := uinRowKey(strconv.FormatInt(oldRowValue, 10))
 		idBytes := b.Get([]byte(oldRowKey))
+		if idBytes == nil {
+			oldRowKey = fmt.Sprintf("row-%d", oldRowValue)
+			idBytes = b.Get([]byte(oldRowKey))
+		}
 		if idBytes == nil {
 			return fmt.Errorf("不存在:%v", oldRowValue)
 		}
-		id := string(idBytes)
+		id := stripUinPrefix(string(idBytes))
 
-		// 检查新虚拟值是否已经存在
-		newRowKey := fmt.Sprintf("row-%d", newRowValue)
+		// 检查新虚拟值是否已经存在（新旧格式都查）
+		newRowKey := uinRowKey(strconv.FormatInt(newRowValue, 10))
+		if b.Get([]byte(newRowKey)) == nil {
+			newRowKey = fmt.Sprintf("row-%d", newRowValue)
+		}
 		if b.Get([]byte(newRowKey)) != nil {
 			return fmt.Errorf("%v :已存在", newRowValue)
 		}
 
-		// 更新真实值到新的虚拟值的映射
+		// 更新前向映射：真实值 → 新虚拟值
 		newRowBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(newRowBytes, uint64(newRowValue))
-		if err := b.Put([]byte(id), newRowBytes); err != nil {
+		uinID := uinKey(id)
+		if err := b.Put([]byte(uinID), newRowBytes); err != nil {
 			return err
+		}
+		// 兼容模式：同时更新旧前向 key
+		if config.GetIdmapIsolation() && config.GetIdmapLegacyCompat() {
+			if err := b.Put([]byte(id), newRowBytes); err != nil {
+				return err
+			}
 		}
 
-		// 更新反向映射
-		if err := b.Delete([]byte(oldRowKey)); err != nil {
+		// 删除旧反向映射
+		oldUinRowKey := uinRowKey(strconv.FormatInt(oldRowValue, 10))
+		_ = b.Delete([]byte(oldUinRowKey))
+		_ = b.Delete([]byte(fmt.Sprintf("row-%d", oldRowValue)))
+
+		// 写入新反向映射
+		newUinRowKey := uinRowKey(strconv.FormatInt(newRowValue, 10))
+		if err := b.Put([]byte(newUinRowKey), []byte(uinID)); err != nil {
 			return err
 		}
-		if err := b.Put([]byte(newRowKey), []byte(id)); err != nil {
-			return err
+		if config.GetIdmapIsolation() && config.GetIdmapLegacyCompat() {
+			if err := b.Put([]byte(fmt.Sprintf("row-%d", newRowValue)), []byte(id)); err != nil {
+				return err
+			}
 		}
 
 		return nil
