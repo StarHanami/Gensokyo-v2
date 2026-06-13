@@ -1196,11 +1196,12 @@ func joinSectionAndKey(sectionName, keyName string) []byte {
 }
 
 // UpdateVirtualValue 更新旧的虚拟值到新的虚拟值的映射
+// 隔离模式下：不迁移，而是新增一条 alias 映射（{UIN}:{newRowValue} → 旧虚拟值）
 func UpdateVirtualValue(oldRowValue, newRowValue int64) error {
 	return db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(BucketName))
 
-		// 双查反向 key（新格式优先，旧格式兼容）
+		// 查反向 key 得到 OpenID
 		oldRowKey := uinRowKey(strconv.FormatInt(oldRowValue, 10))
 		idBytes := b.Get([]byte(oldRowKey))
 		if idBytes == nil {
@@ -1212,43 +1213,39 @@ func UpdateVirtualValue(oldRowValue, newRowValue int64) error {
 		}
 		id := stripUinPrefix(string(idBytes))
 
-		// 检查新虚拟值是否已经存在（新旧格式都查）
-		newRowKey := uinRowKey(strconv.FormatInt(newRowValue, 10))
-		if b.Get([]byte(newRowKey)) == nil {
-			newRowKey = fmt.Sprintf("row-%d", newRowValue)
+		if config.GetIdmapIsolation() {
+			// === 隔离模式：新增 alias，不迁移 ===
+			// 写一条新前向 key: "{UIN}:{newRowValue}" → oldRowValue（原虚拟 ID 不变）
+			aliasKey := uinKey(strconv.FormatInt(newRowValue, 10))
+			oldRowBytes := make([]byte, 8)
+			binary.BigEndian.PutUint64(oldRowBytes, uint64(oldRowValue))
+			if err := b.Put([]byte(aliasKey), oldRowBytes); err != nil {
+				return err
+			}
+			if config.GetIdmapLegacyCompat() {
+				b.Put([]byte(strconv.FormatInt(newRowValue, 10)), oldRowBytes)
+			}
+			return nil
 		}
+
+		// === 非隔离模式：原迁移逻辑 ===
+		// 检查新虚拟值是否已存在
+		newRowKey := fmt.Sprintf("row-%d", newRowValue)
 		if b.Get([]byte(newRowKey)) != nil {
 			return fmt.Errorf("%v :已存在", newRowValue)
 		}
 
-		// 更新前向映射：真实值 → 新虚拟值
+		// 更新前向映射
 		newRowBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(newRowBytes, uint64(newRowValue))
-		uinID := uinKey(id)
-		if err := b.Put([]byte(uinID), newRowBytes); err != nil {
+		if err := b.Put([]byte(id), newRowBytes); err != nil {
 			return err
 		}
-		// 兼容模式：同时更新旧前向 key
-		if config.GetIdmapIsolation() && config.GetIdmapLegacyCompat() {
-			if err := b.Put([]byte(id), newRowBytes); err != nil {
-				return err
-			}
-		}
 
-		// 删除旧反向映射
-		oldUinRowKey := uinRowKey(strconv.FormatInt(oldRowValue, 10))
-		_ = b.Delete([]byte(oldUinRowKey))
+		// 删除旧反向、写入新反向
 		_ = b.Delete([]byte(fmt.Sprintf("row-%d", oldRowValue)))
-
-		// 写入新反向映射
-		newUinRowKey := uinRowKey(strconv.FormatInt(newRowValue, 10))
-		if err := b.Put([]byte(newUinRowKey), []byte(uinID)); err != nil {
+		if err := b.Put([]byte(newRowKey), []byte(id)); err != nil {
 			return err
-		}
-		if config.GetIdmapIsolation() && config.GetIdmapLegacyCompat() {
-			if err := b.Put([]byte(fmt.Sprintf("row-%d", newRowValue)), []byte(id)); err != nil {
-				return err
-			}
 		}
 
 		return nil
