@@ -149,8 +149,11 @@ func HandleSendPrivateMsgWakeup(client callapi.Client, api openapi.OpenAPI, apiv
 			groupMessage.MsgID = ""
 			groupMessage.EventID = ""
 
-			resp, err := postC2CWakeupMessageWithRetry(apiv2, userID, groupMessage)
-			sendWakeupNotice(client, userID, resp, err, selfID)
+			// 异步发送，避免阻塞响应超时
+			go func() {
+				resp, err := postC2CWakeupMessageWithRetry(apiv2, userID, groupMessage)
+				sendWakeupNotice(client, userID, resp, err, selfID)
+			}()
 		} else {
 			mylog.Println("Error: Expected MessageToCreate type for text.")
 		}
