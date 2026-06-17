@@ -863,6 +863,9 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 		foundItems["reply_msg_id"] = append(foundItems["reply_msg_id"], matches[1])
 	}
 
+	// 在合并后的 messageText 中统一解析 [CQ:active]（覆盖消息段路径）
+	messageText = ProcessCQActive(messageText, foundItems)
+
 	if paramsMessage.GroupID == nil {
 		//处理at
 		messageText = transformMessageTextAtNoGroupID(messageText)
