@@ -149,7 +149,8 @@ func HandleSendPrivateMsgWakeup(client callapi.Client, api openapi.OpenAPI, apiv
 			groupMessage.MsgID = ""
 			groupMessage.EventID = ""
 
-			// 异步发送，避免阻塞响应超时
+			// 异步发送，避免阻塞 API 响应导致 nonebot 超时
+			// QQ API 返回结果通过 notice 事件回传
 			go func() {
 				resp, err := postC2CWakeupMessageWithRetry(apiv2, userID, groupMessage)
 				sendWakeupNotice(client, userID, resp, err, selfID)
