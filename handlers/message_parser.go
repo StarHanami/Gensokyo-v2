@@ -556,6 +556,8 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 	case string:
 		mylog.Printf("params.message is a string\n")
 		messageText = message
+		// 解析 [CQ:active,type=xxx,sub_type=yyy]
+		messageText = ProcessCQActive(messageText, foundItems)
 		// 直接应用替换规则
 		if config.GetEnableChangeWord() {
 			messageText = acnode.CheckWordOUT(messageText)
@@ -656,6 +658,16 @@ func parseMessageContent(paramsMessage callapi.ParamsContent, message callapi.Ac
 					foundItems["reply_msg_id"] = append(foundItems["reply_msg_id"], replyID)
 				}
 				messageText += "[CQ:reply,id=" + replyID + "]"
+
+			case "active":
+				dataMap, _ := segmentMap["data"].(map[string]interface{})
+				if activeType, ok := dataMap["type"].(string); ok {
+					foundItems["active_type"] = append(foundItems["active_type"], activeType)
+				}
+				if subType, ok := dataMap["sub_type"].(string); ok {
+					foundItems["active_sub_type"] = append(foundItems["active_sub_type"], subType)
+				}
+				// [CQ:active] 不在 messageText 中留痕
 
 			case "avatar":
 				qqNumber, _ := segmentMap["data"].(map[string]interface{})["qq"].(string)
@@ -2039,4 +2051,27 @@ func FetchSongDetail(songID string) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+// ProcessCQActive 解析 [CQ:active,type=xxx,sub_type=yyy] 并移除
+func ProcessCQActive(text string, foundItems map[string][]string) string {
+	re := regexp.MustCompile(`\[CQ:active,([^\]]*)\]`)
+	return re.ReplaceAllStringFunc(text, func(match string) string {
+		inner := match[1 : len(match)-1]
+		if idx := strings.Index(inner, ","); idx >= 0 {
+			paramsStr := inner[idx+1:]
+			for _, part := range strings.Split(paramsStr, ",") {
+				kv := strings.SplitN(part, "=", 2)
+				if len(kv) == 2 {
+					switch strings.TrimSpace(kv[0]) {
+					case "type":
+						foundItems["active_type"] = append(foundItems["active_type"], strings.TrimSpace(kv[1]))
+					case "sub_type":
+						foundItems["active_sub_type"] = append(foundItems["active_sub_type"], strings.TrimSpace(kv[1]))
+					}
+				}
+			}
+		}
+		return ""
+	})
 }
