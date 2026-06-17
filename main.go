@@ -705,7 +705,7 @@ func ChannelEventHandler() event.ChannelEventHandler {
 // MemberEventHandler 处理成员变更事件
 func MemberEventHandler() event.GuildMemberEventHandler {
 	return func(event *dto.WSPayload, data *dto.WSGuildMemberData) error {
-		go p.ProcessGuildMember(data, event.Type)
+		go p.ProcessGuildMember(data, string(event.Type))
 		return nil
 	}
 }
