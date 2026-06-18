@@ -2080,3 +2080,50 @@ func ProcessCQActive(text string, foundItems map[string][]string) string {
 		return ""
 	})
 }
+
+// ProcessCQMemberOutbound 处理出站 [CQ:member,type=add/remove,user_id=虚拟ID]
+// type=add: 使用存储的 event_id 进行被动回复
+// type=remove: 转为主动消息发送
+// 返回清理后的文本，同时修改 eventID 指针
+func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2 openapi.OpenAPI) string {
+	re := regexp.MustCompile(`\[CQ:member,([^\]]*)\]`)
+	return re.ReplaceAllStringFunc(text, func(match string) string {
+		inner := match[1 : len(match)-1]
+		var memberType, userIDStr string
+		if idx := strings.Index(inner, ","); idx >= 0 {
+			paramsStr := inner[idx+1:]
+			for _, part := range strings.Split(paramsStr, ",") {
+				kv := strings.SplitN(part, "=", 2)
+				if len(kv) == 2 {
+					switch strings.TrimSpace(kv[0]) {
+					case "type":
+						memberType = strings.TrimSpace(kv[1])
+					case "user_id":
+						userIDStr = strings.TrimSpace(kv[1])
+					}
+				}
+			}
+		}
+
+		switch memberType {
+		case "add":
+			// 从 echo 中查找该群对应的 event_id（key 格式: AppID_GroupOpenID）
+			appID := config.GetAppIDStr()
+			key := appID + "_" + groupID
+			storedEventID := echo.GetEventIDByKey(key)
+			if storedEventID != "" {
+				*eventID = storedEventID
+				mylog.Printf("[CQ:member] 入群回复: 使用 event_id=%s", storedEventID)
+			} else {
+				mylog.Printf("[CQ:member] 入群回复: 未找到 event_id (group=%s)", groupID)
+			}
+
+		case "remove":
+			// 退群只能主动推送
+			*eventID = ""
+			mylog.Printf("[CQ:member] 退群消息: 转为主动推送")
+		}
+
+		return ""
+	})
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hoshinonyaruko/gensokyo/config"
+	"github.com/hoshinonyaruko/gensokyo/echo"
 	"github.com/hoshinonyaruko/gensokyo/idmap"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
 	"github.com/tencent-connect/botgo/dto"
@@ -52,6 +53,16 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupMemberEvent, eventType st
 		timestamp = time.Now().Unix()
 	}
 
+	// 入群事件存储 event_id 以便后续被动回复
+	if eventType == "GROUP_MEMBER_ADD" && data.EventID != "" {
+		echo.AddEvnetIDv2(
+			strconv.FormatInt(selfID, 10),
+			data.GroupOpenID,
+			data.EventID,
+		)
+		mylog.Printf("已存储群成员入群 event_id: %s (group=%s)", data.EventID, data.GroupOpenID)
+	}
+
 	// CQ 码描述
 	memberCQ := fmt.Sprintf("[CQ:member,type=%s,user_id=%d]", map[string]string{
 		"GROUP_MEMBER_ADD":    "add",
@@ -71,6 +82,7 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupMemberEvent, eventType st
 			Message:     memberCQ,
 			RealUserID:  data.MemberOpenID,
 			RealGroupID: data.GroupOpenID,
+			EventID:     data.EventID,
 		}
 		outputMap := structToMap(notice)
 		mylog.Printf("群成员加入: group=%s, user=%s", data.GroupOpenID, data.MemberOpenID)
