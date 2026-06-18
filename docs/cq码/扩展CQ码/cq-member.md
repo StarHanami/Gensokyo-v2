@@ -4,7 +4,7 @@
 
 用于标记群成员入群/退群事件的 CQ 码。`group_id` 和 `user_id` 均为 Gensokyo 对 OpenID 转换后的虚拟 ID。
 
-整个流程对后端完全透明——入站是普通 `notice` 事件，出站是普通 `send_group_msg`（`message.group.normal`），后端无需特殊处理。
+整个流程对后端完全透明——入站是普通 `message.group.normal` 事件，出站是普通 `send_group_msg`，后端无需特殊处理。
 
 ## 格式
 
@@ -49,33 +49,35 @@
 ## 后端示例（nonebot2）
 
 ```python
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, Bot, Message
+from nonebot import on_message
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 
 @on_message().handle()
-async def handle_group_member_cq(bot: Bot, event: GroupMessageEvent):
+async def handle_member_cq(bot: Bot, event: GroupMessageEvent):
     # 判断是否为 [CQ:member] 消息
     if not event.raw_message.startswith("[CQ:member"):
         return
-    # event.raw_message 为 "[CQ:member,type=add,group_id=821404315,user_id=3607918353]"
-    await bot.send_group_msg(
-        group_id=event.group_id,
-        message=Message(f"{event.raw_message}欢迎新成员！")
-    )
+
+    # 解析 CQ 码
+    import re
+    match = re.search(r'type=(\w+)', event.raw_message)
+    cq_type = match.group(1)  # 'add' 或 'remove'
+
+    if cq_type == "add":
+        # 入群欢迎： [CQ:member] + [CQ:at] + [CQ:markdown] 或文本
+        reply_msg = Message(
+            f"{event.raw_message}"
+            f"[CQ:at,qq={event.user_id}]"
+            f"[CQ:markdown,data=<base64>]"  # 替换为实际 markdown
+        )
+    elif cq_type == "remove":
+        # 退群通知： [CQ:member] + 文本
+        reply_msg = Message(f"{event.raw_message}离开了我们")
+    else:
+        return
+
+    await bot.send_group_msg(group_id=event.group_id, message=reply_msg)
 ```
-
-## 配置
-
-需在 `config.yml` 的 `text_intent` 中启用：
-
-```yaml
-text_intent:
-  - "GroupMemberAddEventHandler"
-  - "GroupMemberRemoveEventHandler"
-```
-
-## 适用范围
-
-🏷️ 群聊
 
 ## 配置
 
