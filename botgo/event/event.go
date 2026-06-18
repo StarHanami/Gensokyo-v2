@@ -326,7 +326,7 @@ func groupdelbothandler(payload *dto.WSPayload, message []byte) error {
 }
 
 func groupMemberAddHandler(payload *dto.WSPayload, message []byte) error {
-	data := &dto.GroupAddBotEvent{}
+	data := &dto.GroupMemberEvent{}
 	if err := ParseData(message, data); err != nil {
 		return err
 	}
@@ -337,7 +337,7 @@ func groupMemberAddHandler(payload *dto.WSPayload, message []byte) error {
 }
 
 func groupMemberRemoveHandler(payload *dto.WSPayload, message []byte) error {
-	data := &dto.GroupAddBotEvent{}
+	data := &dto.GroupMemberEvent{}
 	if err := ParseData(message, data); err != nil {
 		return err
 	}

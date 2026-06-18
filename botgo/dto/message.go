@@ -60,6 +60,15 @@ type GroupAddBotEvent struct {
 	Timestamp      interface{} `json:"timestamp"`
 }
 
+// GroupMemberEvent 表示群成员变动事件的数据结构（GROUP_MEMBER_ADD / GROUP_MEMBER_REMOVE）
+type GroupMemberEvent struct {
+	ID           string      `json:"id"`
+	EventID      string      `json:"event_id"`
+	GroupOpenID  string      `json:"group_openid"`
+	MemberOpenID string      `json:"member_openid"`
+	Timestamp    interface{} `json:"timestamp"`
+}
+
 type GroupMsgRejectEvent struct {
 	EventID        string      `json:"event_id"`
 	GroupOpenID    string      `json:"group_openid"`

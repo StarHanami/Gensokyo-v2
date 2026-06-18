@@ -12,7 +12,7 @@ import (
 
 // ProcessGroupMember 处理群成员变动事件
 // eventType: "GROUP_MEMBER_ADD" 或 "GROUP_MEMBER_REMOVE"
-func (p *Processors) ProcessGroupMember(data *dto.GroupAddBotEvent, eventType string) {
+func (p *Processors) ProcessGroupMember(data *dto.GroupMemberEvent, eventType string) {
 	if data == nil {
 		mylog.Printf("ProcessGroupMember: 数据为空")
 		return
@@ -27,8 +27,8 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupAddBotEvent, eventType st
 		return
 	}
 
-	// 将 op_member_openid 转为虚拟 user_id（入群/退群成员）
-	userID, err := idmap.StoreIDv2(data.OpMemberOpenID)
+	// 将 member_openid 转为虚拟 user_id（入群/退群成员）
+	userID, err := idmap.StoreIDv2(data.MemberOpenID)
 	if err != nil {
 		mylog.Printf("ProcessGroupMember: user_id 转换失败: %v", err)
 		return
@@ -61,11 +61,11 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupAddBotEvent, eventType st
 			SubType:     "member",
 			Time:        timestamp,
 			UserID:      userID,
-			RealUserID:  data.OpMemberOpenID,
+			RealUserID:  data.MemberOpenID,
 			RealGroupID: data.GroupOpenID,
 		}
 		outputMap := structToMap(notice)
-		mylog.Printf("群成员加入: group=%s, user=%s", data.GroupOpenID, data.OpMemberOpenID)
+		mylog.Printf("群成员加入: group=%s, user=%s", data.GroupOpenID, data.MemberOpenID)
 		p.BroadcastMessageToAll(outputMap, p.Apiv2, data)
 
 	case "GROUP_MEMBER_REMOVE":
@@ -77,11 +77,11 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupAddBotEvent, eventType st
 			SubType:     "member",
 			Time:        timestamp,
 			UserID:      userID,
-			RealUserID:  data.OpMemberOpenID,
+			RealUserID:  data.MemberOpenID,
 			RealGroupID: data.GroupOpenID,
 		}
 		outputMap := structToMap(notice)
-		mylog.Printf("群成员离开: group=%s, user=%s", data.GroupOpenID, data.OpMemberOpenID)
+		mylog.Printf("群成员离开: group=%s, user=%s", data.GroupOpenID, data.MemberOpenID)
 		p.BroadcastMessageToAll(outputMap, p.Apiv2, data)
 
 	default:

@@ -152,10 +152,10 @@ type C2CMsgRejectHandler func(event *dto.WSPayload, data *dto.WSC2CMsgRejectData
 type C2CMsgReceiveHandler func(event *dto.WSPayload, data *dto.WSC2CMsgReceiveData) error
 
 // GroupMemberAddEventHandler 群成员新增事件 handler (GROUP_MEMBER_ADD)
-type GroupMemberAddEventHandler func(event *dto.WSPayload, data *dto.GroupAddBotEvent) error
+type GroupMemberAddEventHandler func(event *dto.WSPayload, data *dto.GroupMemberEvent) error
 
 // GroupMemberRemoveEventHandler 群成员移除事件 handler (GROUP_MEMBER_REMOVE)
-type GroupMemberRemoveEventHandler func(event *dto.WSPayload, data *dto.GroupAddBotEvent) error
+type GroupMemberRemoveEventHandler func(event *dto.WSPayload, data *dto.GroupMemberEvent) error
 
 // *******************************************************************
 
