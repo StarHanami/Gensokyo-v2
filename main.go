@@ -284,7 +284,7 @@ func main() {
 
 			// 发现未知事件模式：订阅所有未使用的 intent 位
 			if config.GetDiscoverUnknownEvents() {
-				unknownBits := []int{6, 7, 8, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 31}
+				unknownBits := []int{6, 7, 8, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 31}
 				for _, bit := range unknownBits {
 					intent |= dto.Intent(1 << bit)
 				}

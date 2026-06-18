@@ -71,7 +71,9 @@ var intentEventMap = map[Intent][]EventType{
 		EventGroupMsgReject, EventGroupMsgReceive,
 		EventFriendAdd, EventFriendDel,
 		EventC2CMsgReject, EventC2CMsgReceive,
-		EventGroupMemberAdd, EventGroupMemberRemove, // [新增] 群成员变动
+	},
+	IntentGroupMembers: {
+		EventGroupMemberAdd, EventGroupMemberRemove,
 	},
 
 	IntentGuildMessageReactions: {EventMessageReactionAdd, EventMessageReactionRemove},

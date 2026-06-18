@@ -43,6 +43,11 @@ const (
 	IntentDirectMessageReactions
 	IntentDirectMessageTyping
 
+	// IntentGroupMembers 群成员变动事件（非文档化）
+	// - GROUP_MEMBER_ADD
+	// - GROUP_MEMBER_REMOVE
+	IntentGroupMembers Intent = 1 << 24
+
 	// IntentGroupMessages 群消息事件
 	// - GROUP_AT_MESSAGE_CREATE // 群中@机器人时的消息
 	IntentGroupMessages Intent = 1 << 25 // 群消息事件
