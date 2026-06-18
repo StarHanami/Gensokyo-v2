@@ -2,6 +2,7 @@ package event
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -102,6 +103,8 @@ func ParseAndHandle(payload *dto.WSPayload) error {
 	if DefaultHandlers.Plain != nil {
 		return DefaultHandlers.Plain(payload, payload.RawMessage)
 	}
+	// 未知事件类型：打印日志方便排查
+	fmt.Printf("[botgo] 未处理的事件类型: OP=%d, Type=%s, Raw=%s\n", payload.OPCode, payload.Type, string(payload.RawMessage))
 	return nil
 }
 
