@@ -39,24 +39,25 @@
 
 后端发送：
 ```
-[CQ:member,type=add,user_id=3607918353]欢迎入群！
+[CQ:member,type=add,user_id=3607918353][CQ:at,qq=3607918353]欢迎入群！
 ```
 
 Gensokyo 行为：
 1. 从 echo 缓存中查找该群对应的 `event_id`
 2. 使用 `event_id` 进行**被动回复**（不消耗主动消息次数）
-3. 清除 CQ 码，发送文本"欢迎入群！"
+3. 清除 `[CQ:member]` 和 `[CQ:at]` 码，发送文本"@xxx 欢迎入群！"
 
 ### type=remove（退群主动推送）
 
 后端发送：
 ```
-[CQ:member,type=remove,user_id=3607918353]离开了我们
+[CQ:member,type=remove,user_id=3607918353][CQ:at,qq=3607918353]离开了我们
 ```
 
 Gensokyo 行为：
 1. 退群事件无 `event_id`，无法被动回复
 2. 自动转为**主动消息推送**（需群已开启主动推送权限）
+3. 清除 `[CQ:member]` 和 `[CQ:at]` 码，发送文本
 
 ## nonebot2 示例
 
@@ -69,7 +70,7 @@ async def handle_group_increase(bot: Bot, event: GroupIncreaseNoticeEvent):
     cq = event.message  # "[CQ:member,type=add,user_id=3607918353]"
     await bot.send_group_msg(
         group_id=event.group_id,
-        message=Message(f"{cq}欢迎新成员！")
+        message=Message(f"{cq}[CQ:at,qq={event.user_id}]欢迎新成员！")
     )
 
 @on_notice().handle()
@@ -77,7 +78,7 @@ async def handle_group_decrease(bot: Bot, event: GroupDecreaseNoticeEvent):
     cq = event.message
     await bot.send_group_msg(
         group_id=event.group_id,
-        message=Message(f"{cq}离开了我们")
+        message=Message(f"{cq}[CQ:at,qq={event.user_id}]离开了我们")
     )
 ```
 
