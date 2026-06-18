@@ -2153,7 +2153,7 @@ func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2
 		}
 
 		// 将虚拟 user_id 反向转换为 OpenID
-		openID, err := idmap.RetrieveRowByCachev2(cqUserID)
+		openID, err := idmap.RetrieveRowByIDv2(cqUserID)
 		if err != nil || openID == "" {
 			mylog.Printf("[CQ:member] user_id=%s 转换为 OpenID 失败: %v", cqUserID, err)
 		} else {
@@ -2167,7 +2167,7 @@ func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2
 
 		switch memberType {
 		case "add":
-			realGroupOpenID, err := idmap.RetrieveRowByCachev2(cqGroupID)
+			realGroupOpenID, err := idmap.RetrieveRowByIDv2(cqGroupID)
 			if err != nil || realGroupOpenID == "" {
 				mylog.Printf("[CQ:member] groupID=%s 转换为 OpenID 失败: %v", cqGroupID, err)
 				realGroupOpenID = cqGroupID

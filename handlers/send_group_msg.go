@@ -418,13 +418,12 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			// 处理出站 [CQ:member] → 自动转换 user_id 并设置 eventID/主动模式
 			var cqGroupID string
 			messageText, cqGroupID, _ = ProcessCQMemberOutbound(messageText, &eventID, message.Params.GroupID.(string), apiv2)
-
-			// 如果 CQ 码中携带了 group_id，用它作为目标群
-			targetGroupID := message.Params.GroupID.(string)
 			if cqGroupID != "" {
-				targetGroupID = cqGroupID
-				mylog.Printf("[CQ:member] 使用 CQ 码中的 group_id=%s 作为目标群", cqGroupID)
+				mylog.Printf("[CQ:member] 从 CQ 码中解析到 group_id=%s", cqGroupID)
 			}
+
+			// message.Params.GroupID 已在前面转换为真实 OpenID，直接使用
+			targetGroupID := message.Params.GroupID.(string)
 
 			msgseq := echo.GetMappingSeq(messageID)
 			echo.AddMappingSeq(messageID, msgseq+1)
