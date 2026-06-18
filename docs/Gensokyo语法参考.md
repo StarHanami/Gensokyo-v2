@@ -11,6 +11,7 @@ Gensokyo 对 OneBot V11 的扩展语法汇总。
 | QQ 音乐 | `[CQ:music,type=qq,id=数字]` | 🌐 全场景 | 分享 QQ 音乐（自动转为 Markdown 卡片） |
 | 回复 | `[CQ:reply,id=数字]` | 📡 仅频道 | 引用回复标记。**频道端**渲染引用样式，群聊端 API 接受但不显示；**Markdown 消息**不支持 |
 | 成员变动 | `[CQ:member,type=add/remove,user_id=数字]` | 🏷️ 群聊 | 群成员入群/退群的 CQ 码标记。**入站**（通知中 `message` 字段）用于告知后端事件类型；**出站**（后端回复时）Gensokyo 自动识别并：`type=add`→被动回复，`type=remove`→主动推送 |
+| 主动标记 | `[CQ:active]` | 🌐 全场景 | 标记消息为主动推送模式。Gensokyo 收到后自动清空 `msg_id`/`event_id`，不走被动回复逻辑。用于群主动推送和 C2C 唤醒消息 |
 
 > 图例: 🌐 全场景 | 🏷️ 群聊 | 📡 频道 | 💬 C2C
 
@@ -237,7 +238,7 @@ MD 内: [CQ:at,qq=数字] → <qqbot-at-user id="OpenID" />
 
 | Action | 说明 |
 |--------|------|
-| `get_avatar` | 获取用户头像直链（[文档](./额外api-get_avatar.md)） |
+| `get_avatar` | 获取用户头像直链（[文档](./扩展api-get_avatar.md)） |
 | `get_robot_share_link` | 获取机器人分享链接 |
 | `send_private_msg_wakeup` | 发送被动唤醒私聊消息 |
 | `put_interaction` | 处理按钮交互回调 |
