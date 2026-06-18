@@ -416,11 +416,19 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 		// 优先发送文本信息
 		if messageText != "" {
 			// 处理出站 [CQ:member] → 自动转换 user_id 并设置 eventID/主动模式
-			messageText = ProcessCQMemberOutbound(messageText, &eventID, message.Params.GroupID.(string), apiv2)
+			var cqGroupID, cqUserID string
+			messageText, cqGroupID, cqUserID = ProcessCQMemberOutbound(messageText, &eventID, message.Params.GroupID.(string), apiv2)
+
+			// 如果 CQ 码中携带了 group_id，用它作为目标群
+			targetGroupID := message.Params.GroupID.(string)
+			if cqGroupID != "" {
+				targetGroupID = cqGroupID
+				mylog.Printf("[CQ:member] 使用 CQ 码中的 group_id=%s 作为目标群", cqGroupID)
+			}
 
 			msgseq := echo.GetMappingSeq(messageID)
 			echo.AddMappingSeq(messageID, msgseq+1)
-			groupReply := generateGroupMessage(messageID, eventID, nil, messageText, msgseq+1, apiv2, message.Params.GroupID.(string))
+			groupReply := generateGroupMessage(messageID, eventID, nil, messageText, msgseq+1, apiv2, targetGroupID)
 
 			// 进行类型断言
 			groupMessage, ok := groupReply.(*dto.MessageToCreate)
@@ -449,7 +457,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			var resp *dto.GroupMessageResponse
 			groupMessage.Timestamp = time.Now().Unix() // 设置时间戳
 			//重新为err赋值
-			resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+			resp, err = apiv2.PostGroupMessage(context.TODO(), targetGroupID, groupMessage)
 			if err != nil {
 				mylog.Printf("发送文本群组信息失败: %v", err)
 				// 错误保存到本地
@@ -462,12 +470,12 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 			if err != nil && strings.Contains(err.Error(), `"code":22009`) {
 				mylog.Printf("信息发送失败,加入到队列中,下次被动信息进行发送")
 				var pair echo.MessageGroupPair
-				pair.Group = message.Params.GroupID.(string)
+				pair.Group = targetGroupID
 				pair.GroupMessage = groupMessage
 				echo.PushGlobalStack(pair)
 			} else if err != nil && strings.Contains(err.Error(), `"code":40034025`) {
 				groupMessage.EventID = ""
-				resp, err = apiv2.PostGroupMessage(context.TODO(), message.Params.GroupID.(string), groupMessage)
+				resp, err = apiv2.PostGroupMessage(context.TODO(), targetGroupID, groupMessage)
 				if err != nil {
 					mylog.Printf("发送文本群组信息失败: %v", err)
 					// 错误保存到本地
@@ -478,7 +486,7 @@ func HandleSendGroupMsg(client callapi.Client, api openapi.OpenAPI, apiv2 openap
 					}
 				}
 			} else if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
-				postGroupMessageWithRetry(apiv2, message.Params.GroupID.(string), groupMessage)
+				postGroupMessageWithRetry(apiv2, targetGroupID, groupMessage)
 			}
 
 			if !config.GetNoRetMsg() {

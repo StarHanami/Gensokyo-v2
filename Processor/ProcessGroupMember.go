@@ -64,10 +64,10 @@ func (p *Processors) ProcessGroupMember(data *dto.GroupMemberEvent, eventType st
 	}
 
 	// CQ 码描述
-	memberCQ := fmt.Sprintf("[CQ:member,type=%s,user_id=%d]", map[string]string{
+	memberCQ := fmt.Sprintf("[CQ:member,type=%s,group_id=%d,user_id=%d]", map[string]string{
 		"GROUP_MEMBER_ADD":    "add",
 		"GROUP_MEMBER_REMOVE": "remove",
-	}[eventType], userID)
+	}[eventType], groupID, userID)
 
 	switch eventType {
 	case "GROUP_MEMBER_ADD":

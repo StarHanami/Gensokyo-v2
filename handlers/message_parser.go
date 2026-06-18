@@ -2115,13 +2115,15 @@ func ProcessCQActive(text string, foundItems map[string][]string) string {
 	})
 }
 
-// ProcessCQMemberOutbound 处理出站 [CQ:member,type=add/remove,user_id=虚拟ID]
+// ProcessCQMemberOutbound 处理出站 [CQ:member,type=add/remove,group_id=虚拟群ID,user_id=虚拟用户ID]
+// 返回: (清理后的文本, CQ码中的虚拟group_id, 转换后的OpenID)
 // type=add: 使用存储的 event_id 进行被动回复
 // type=remove: 转为主动消息发送
-// 返回清理后的文本，同时修改 eventID 指针
-func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2 openapi.OpenAPI) string {
+func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2 openapi.OpenAPI) (string, string, string) {
+	var cqGroupID string
+	var cqUserID string
 	re := regexp.MustCompile(`\[CQ:member,([^\]]*)\]`)
-	return re.ReplaceAllStringFunc(text, func(match string) string {
+	result := re.ReplaceAllStringFunc(text, func(match string) string {
 		inner := match[1 : len(match)-1]
 		var memberType string
 		if idx := strings.Index(inner, ","); idx >= 0 {
@@ -2132,32 +2134,52 @@ func ProcessCQMemberOutbound(text string, eventID *string, groupID string, apiv2
 					switch strings.TrimSpace(kv[0]) {
 					case "type":
 						memberType = strings.TrimSpace(kv[1])
+					case "group_id":
+						cqGroupID = strings.TrimSpace(kv[1])
 					case "user_id":
-						_ = strings.TrimSpace(kv[1]) // 保留以备后续使用
+						cqUserID = strings.TrimSpace(kv[1])
 					}
 				}
 			}
 		}
 
+		// 将虚拟 user_id 反向转换为 OpenID
+		openID, err := idmap.RetrieveRowByCachev2(cqUserID)
+		if err != nil || openID == "" {
+			mylog.Printf("[CQ:member] user_id=%s 转换为 OpenID 失败: %v", cqUserID, err)
+		} else {
+			mylog.Printf("[CQ:member] user_id=%s → OpenID=%s", cqUserID, openID)
+		}
+
+		// 从 CQ 码中取 group_id，优先于入参
+		if cqGroupID == "" {
+			cqGroupID = groupID
+		}
+
 		switch memberType {
 		case "add":
-			// 从 echo 中查找该群对应的 event_id（key 格式: AppID_GroupOpenID）
+			realGroupOpenID, err := idmap.RetrieveRowByCachev2(cqGroupID)
+			if err != nil || realGroupOpenID == "" {
+				mylog.Printf("[CQ:member] groupID=%s 转换为 OpenID 失败: %v", cqGroupID, err)
+				realGroupOpenID = cqGroupID
+			}
 			appID := config.GetAppIDStr()
-			key := appID + "_" + groupID
+			key := appID + "_" + realGroupOpenID
 			storedEventID := echo.GetEventIDByKey(key)
 			if storedEventID != "" {
 				*eventID = storedEventID
-				mylog.Printf("[CQ:member] 入群回复: 使用 event_id=%s", storedEventID)
+				mylog.Printf("[CQ:member] 入群回复: 使用 event_id=%s (group->%s, user->%s)", storedEventID, realGroupOpenID, openID)
 			} else {
-				mylog.Printf("[CQ:member] 入群回复: 未找到 event_id (group=%s)", groupID)
+				mylog.Printf("[CQ:member] 入群回复: 未找到 event_id (group=%s)", cqGroupID)
 			}
 
 		case "remove":
-			// 退群只能主动推送
 			*eventID = ""
-			mylog.Printf("[CQ:member] 退群消息: 转为主动推送")
+			mylog.Printf("[CQ:member] 退群消息: 转为主动推送 (group_id=%s, user->%s)", cqGroupID, openID)
 		}
 
 		return ""
 	})
+
+	return result, cqGroupID, cqUserID
 }
