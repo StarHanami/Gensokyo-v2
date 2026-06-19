@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       upx_level:
-        description: 'UPX compression level (0=skip, 1-9)'
+        description: 'UPX compression level (0=skip, 1-9, or best-lzma)'
         required: false
         default: '7'
 
@@ -124,6 +124,8 @@ jobs:
           UPX_LVL="${{ github.event.inputs.upx_level || '7' }}"
           if [ "$UPX_LVL" = "0" ]; then
             echo "UPX compression disabled (level=0)"
+          elif [ "$UPX_LVL" = "best-lzma" ]; then
+            upx --best --lzma gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
           else
             upx -"$UPX_LVL" gensokyo-${{ matrix.os }}-${{ matrix.goarch }}${{ matrix.ext }}
           fi
