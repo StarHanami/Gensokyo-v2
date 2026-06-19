@@ -200,9 +200,14 @@ todo,正在施工...
 > 新增了如下 **Event**</br>
 > -------
 > **friend_decrease**（好友删除）
-> **group_reject/group_receive**（群推送开关）
+> **friend_increase**（好友新增）
+> **group_reject**（群推送关闭）
+> **group_receive**（群推送开启）
 > **interaction**（按钮回调）
-> **c2c_msg_reject/c2c_msg_receive**（C2C推送开关）
+> **c2c_msg_reject**（C2C推送关闭）
+> **c2c_msg_receive**（C2C推送开启）
+> **group_member_add**（群成员新增）
+> **group_member_remove**（群成员移除）
 
 #### 符合 OneBot 标准的 Event（部分 Event 比 OneBot 标准多上报几个字段，不影响使用）
 
