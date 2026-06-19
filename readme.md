@@ -250,6 +250,9 @@ todo,正在施工...
 > 新增了如下 **Intent**</br>
 > -------
 > **GroupMessageEventHandler**（非@群消息）事件
+> **GroupAddRobotEventHandler**/**GroupDelRobotEventHandler**（群机器人新增/删除）
+> **GroupMsgRejectHandler**/**GroupMsgReceiveHandler**（群推送开关）
+> **GroupMemberAddEventHandler**/**GroupMemberRemoveEventHandler**（群成员变动）
 
 | 事件名称                   | 代表含义                         |
 | --------------------------- | ------------------------------- |
