@@ -13,8 +13,20 @@ on:
   workflow_dispatch:
     inputs:
       upx_level:
-        description: 'UPX compression level (0=skip, 1-9, or best-lzma)'
-        required: false
+        description: 'UPX compression level'
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          - best-lzma
         default: '7'
 
 
