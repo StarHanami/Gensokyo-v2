@@ -1,5 +1,7 @@
 name: Build Gensokyo (Multi-Platform)
 
+run-name: Build Gensokyo-${{ github.sha }}-upx-${{ inputs.upx_level || '7' }}
+
 on:
   push:
     branches: [ "main" ]
