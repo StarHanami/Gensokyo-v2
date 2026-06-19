@@ -204,8 +204,6 @@ todo,正在施工...
 > **group_reject**（群推送关闭）
 > **group_receive**（群推送开启）
 > **interaction**（按钮回调）
-> **c2c_msg_reject**（C2C推送关闭）
-> **c2c_msg_receive**（C2C推送开启）
 > **group_member_add**（群成员新增）
 > **group_member_remove**（群成员移除）
 
