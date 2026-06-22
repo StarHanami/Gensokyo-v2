@@ -1,16 +1,16 @@
-# Gensokyo 本地构建脚本
-# 使用 goproxy.cn 加速依赖下载
+# Gensokyo local build script
+# Uses goproxy.cn for fast dependency downloads in China
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
-# 设置 Go 模块代理（国内高速镜像）
-$env:GOPROXY = "https://goproxy.cn,direct"
-$env:GOFLAGS = "-mod=mod"
+# Set Go module proxy (fast China mirror)
+$env:GOPROXY = 'https://goproxy.cn,direct'
+$env:GOFLAGS = '-mod=mod'
 
-Write-Host "=== Gensokyo 本地构建 ===" -ForegroundColor Cyan
+Write-Host "=== Gensokyo Build ===" -ForegroundColor Cyan
 Write-Host "Go Proxy: $env:GOPROXY" -ForegroundColor Gray
 
-# 参数
+# Parameters
 $targetOS = if ($args[0]) { $args[0] } else { (go env GOOS) }
 $targetArch = if ($args[1]) { $args[1] } else { (go env GOARCH) }
 $upxLevel = if ($args[2]) { $args[2] } else { "7" }
@@ -28,28 +28,29 @@ Write-Host "Target: $targetOS/$targetArch"
 Write-Host "Output: $output"
 
 # 下载依赖
-Write-Host "`n[1/3] 下载依赖..." -ForegroundColor Yellow
+Write-Host "`n[1/3] Downloading deps..." -ForegroundColor Yellow
 go mod tidy
 
 # 编译
-Write-Host "[2/3] 编译..." -ForegroundColor Yellow
+Write-Host "[2/3] Building..." -ForegroundColor Yellow
 go build -trimpath -ldflags="-s -w" -v -o $output .
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "编译失败！" -ForegroundColor Red
+    Write-Host 'Build failed!' -ForegroundColor Red
     exit 1
 }
 
-Write-Host "编译成功: $output" -ForegroundColor Green
+Write-Host ('Build success: ' + $output) -ForegroundColor Green
 
-# UPX 压缩（固定等级 7）
-Write-Host "[3/3] UPX 压缩..." -ForegroundColor Yellow
+# UPX compress (fixed level 7)
+Write-Host '[3/3] UPX compress...' -ForegroundColor Yellow
 $upx = Get-Command "upx" -ErrorAction SilentlyContinue
 if ($upx) {
     & $upx.Source "-7" $output
-    Write-Host "UPX 完成" -ForegroundColor Green
+    Write-Host 'UPX done' -ForegroundColor Green
 } else {
-    Write-Host "UPX 未安装，跳过压缩。安装: winget install upx" -ForegroundColor Gray
+    Write-Host 'UPX not found, skip compression.' -ForegroundColor Gray
+    Write-Host 'Install UPX: winget install upx'
 }
 
-Write-Host "`n=== 构建完成 ===" -ForegroundColor Cyan
+Write-Host '=== Build complete ===' -ForegroundColor Cyan
