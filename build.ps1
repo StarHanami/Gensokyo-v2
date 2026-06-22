@@ -27,12 +27,22 @@ $output = "gensokyo-$targetOS-$targetArch$ext"
 Write-Host "Target: $targetOS/$targetArch"
 Write-Host "Output: $output"
 
-# 下载依赖
+# Download dependencies
 Write-Host "`n[1/3] Downloading deps..." -ForegroundColor Yellow
 go mod tidy
 
-# 编译
+# Build
 Write-Host "[2/3] Building..." -ForegroundColor Yellow
+# Ensure webui/dist exists for Go embed directive
+$webuiDist = 'webui/dist'
+if (-not (Test-Path "$webuiDist/css/style.css")) {
+    $null = New-Item -ItemType Directory -Force -Path "$webuiDist/css", "$webuiDist/fonts", "$webuiDist/icons", "$webuiDist/js" 2>$null
+    Set-Content -Path "$webuiDist/placeholder.html" -Value '' -NoNewline
+    Set-Content -Path "$webuiDist/css/placeholder.css" -Value '' -NoNewline
+    Set-Content -Path "$webuiDist/fonts/placeholder.txt" -Value '' -NoNewline
+    Set-Content -Path "$webuiDist/icons/placeholder.txt" -Value '' -NoNewline
+    Set-Content -Path "$webuiDist/js/placeholder.js" -Value '' -NoNewline
+}
 go build -trimpath -ldflags="-s -w" -v -o $output .
 
 if ($LASTEXITCODE -ne 0) {
