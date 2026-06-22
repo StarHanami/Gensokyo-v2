@@ -929,8 +929,7 @@ func RetrieveRowByIDv2(rowid string) (string, error) {
 		return idValue, nil
 	}
 
-	// 如果lotus为假,就保持原来的RetrieveRowByIDv2的方法
-	// 惰性迁移：优先查新 identity DB
+	// 热路径：新库优先，查不到回退旧库（不写回，由后台迁移协程负责）
 	if id, ok := newDBLookup(rowid); ok {
 		return id, nil
 	}
@@ -982,8 +981,7 @@ func RetrieveRowByCachev2(rowid string) (string, error) {
 		return idValue, nil
 	}
 
-	// 如果lotus为假,就保持原来的RetrieveRowByIDv2的方法
-	// 惰性迁移：优先查新 msg DB
+	// 热路径：新库优先，查不到回退旧库（不写回，由后台迁移协程负责）
 	if id, ok := newDBMsgLookup(rowid); ok {
 		return id, nil
 	}

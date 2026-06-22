@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/hoshinonyaruko/gensokyo/config"
 	"github.com/hoshinonyaruko/gensokyo/mylog"
@@ -68,9 +69,10 @@ func initNewDBs() {
 
 		mylog.Printf("新 idmap 数据库已就绪: %s, %s", IdentityDBName, MsgDBName)
 
-		// 检测旧 DB，启动惰性迁移
+		// 检测旧 DB，启动后台惰性迁移
 		if hasOldDB() {
-			mylog.Printf("检测到旧 idmap.db，惰性迁移模式已开启")
+			mylog.Printf("检测到旧 idmap.db，启动后台静默迁移")
+			go backgroundMigration()
 		}
 	})
 }
@@ -247,8 +249,139 @@ func dualWriteToOldDB(key, openID string, rowID int64) {
 }
 
 // ---------------------------------------------------------------------------
-// 公开 API
+// 后台静默迁移
 // ---------------------------------------------------------------------------
+
+var migrationStarted bool
+
+// backgroundMigration 后台扫描旧库，将数据分批搬入新库
+func backgroundMigration() {
+	if migrationStarted {
+		return
+	}
+	migrationStarted = true
+
+	go func() {
+		// 先迁移 identity（ids 桶）
+		migrateBucket(BucketName, IdentityBucketName, identityDB, "identity")
+		// 再迁移消息缓存（cache 桶）
+		migrateBucket(CacheBucketName, MsgBucketName, msgDB, "msg")
+
+		mylog.Printf("[idmap] 后台迁移完成，旧 idmap.db 可安全删除")
+	}()
+}
+
+// migrateBucket 将旧库一个桶中的数据逐条搬入新库
+func migrateBucket(oldBucket, newBucket string, newDB *bbolt.DB, label string) {
+	if !hasOldDB() {
+		return
+	}
+
+	type entry struct {
+		key   string
+		value string
+	}
+
+	batchSize := 100
+	total := 0
+
+	for {
+		// 从旧库读一批
+		batch, done, err := readOldDBBatch(oldBucket, batchSize)
+		if err != nil || len(batch) == 0 {
+			if done {
+				mylog.Printf("[idmap] 迁移 %s 完成，共 %d 条", label, total)
+			}
+			return
+		}
+
+		// 写入新库（跳过已存在的）
+		written := writeBatchToNewDB(newDB, newBucket, batch)
+		total += written
+
+		if done {
+			mylog.Printf("[idmap] 迁移 %s 完成，共 %d 条", label, total)
+			return
+		}
+
+		// 每批之间稍作暂停，避免 CPU 争抢
+		if total%(batchSize*10) == 0 {
+			mylog.Printf("[idmap] 迁移 %s 进度: %d 条", label, total)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// readOldDBBatch 从旧库中读取一批尚未迁移的条目
+var oldCursorKey []byte // 批次游标
+
+func readOldDBBatch(bucketName string, limit int) ([]entry, bool, error) {
+	var entries []entry
+	done := false
+
+	err := db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		if b == nil {
+			done = true
+			return nil
+		}
+
+		c := b.Cursor()
+		k, v := c.Seek(oldCursorKey)
+		if k == nil {
+			done = true
+			return nil
+		}
+
+		// 跳过计数器 key
+		for i := 0; i < limit && k != nil; i++ {
+			keyStr := string(k)
+			if keyStr == IdentityCounterKey || keyStr == MsgCounterKey {
+				k, v = c.Next()
+				continue
+			}
+			entries = append(entries, entry{key: keyStr, value: string(v)})
+			k, v = c.Next()
+		}
+
+		if k == nil {
+			done = true
+		} else {
+			oldCursorKey = k
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, true, err
+	}
+	if len(entries) == 0 {
+		done = true
+	}
+	return entries, done, nil
+}
+
+// writeBatchToNewDB 将一批条目写入新库（跳过已存在的）
+func writeBatchToNewDB(newDB *bbolt.DB, bucketName string, entries []entry) int {
+	written := 0
+	_ = newDB.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		for _, e := range entries {
+			if b.Get([]byte(e.key)) == nil {
+				b.Put([]byte(e.key), []byte(e.value))
+				written++
+			}
+		}
+		return nil
+	})
+	return written
+}
+
+// ResetMigrationCursor 重置迁移游标（重新扫描全部）
+func ResetMigrationCursor() {
+	oldCursorKey = nil
+	migrationStarted = false
+}
 
 // StoreGroupID 存储群 OpenID → 虚拟群 ID
 func StoreGroupID(groupOpenID string) (int64, error) {
