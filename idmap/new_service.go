@@ -279,7 +279,8 @@ func backgroundMigration() {
 			markMigrationComplete()
 			finalizeOldDB()
 		} else {
-			mylog.Printf("[idmap] 数据校验失败，保留旧 idmap.db，请手动检查")
+			mylog.Printf("[idmap] 数据校验失败，自动修复中...")
+			repairMigration()
 		}
 	}()
 }
@@ -439,7 +440,7 @@ func verifyMigration() bool {
 	return ok
 }
 
-// verifyBucket 校验单个桶的迁移完整性（对比条数 + 抽查）
+// verifyBucket 校验单个桶的迁移完整性（逐条对比）
 func verifyBucket(oldBucket, newBucket string, newDB *bbolt.DB, label string) bool {
 	var oldCount, newCount int
 	var mismatch int
@@ -507,6 +508,63 @@ func verifyBucket(oldBucket, newBucket string, newDB *bbolt.DB, label string) bo
 // ---------------------------------------------------------------------------
 // 数据校验与收尾
 // ---------------------------------------------------------------------------
+
+// repairMigration 用旧库覆盖修复新库中不一致的条目
+func repairMigration() {
+	if !hasOldDB() {
+		mylog.Printf("[idmap] 无旧库可修复")
+		return
+	}
+
+	r1 := repairBucket(BucketName, IdentityBucketName, identityDB, "identity")
+	r2 := repairBucket(CacheBucketName, MsgBucketName, msgDB, "msg")
+
+	if r1+r2 > 0 {
+		mylog.Printf("[idmap] 修复完成，共修复 %d 条", r1+r2)
+	} else {
+		mylog.Printf("[idmap] 未发现需修复的条目")
+	}
+
+	if verifyMigration() {
+		mylog.Printf("[idmap] 修复后校验通过")
+		markMigrationComplete()
+		finalizeOldDB()
+	} else {
+		mylog.Printf("[idmap] 修复后校验仍失败，保留旧库，请手动检查")
+	}
+}
+
+// repairBucket 用旧库覆盖修复新库中不一致的条目
+func repairBucket(oldBucket, newBucket string, newDB *bbolt.DB, label string) int {
+	fixed := 0
+	_ = newDB.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(newBucket))
+		_ = db.View(func(oldTx *bbolt.Tx) error {
+			oldB := oldTx.Bucket([]byte(oldBucket))
+			if oldB == nil {
+				return nil
+			}
+			return oldB.ForEach(func(k, v []byte) error {
+				key := string(k)
+				if key == IdentityCounterKey || key == MsgCounterKey {
+					return nil
+				}
+				existing := b.Get(k)
+				if existing == nil || string(existing) != string(v) {
+					b.Put(k, v)
+					fixed++
+				}
+				return nil
+			})
+		})
+		return nil
+	})
+	if fixed > 0 {
+		mylog.Printf("[idmap] 修复 %s: %d 条不一致", label, fixed)
+	}
+	return fixed
+}
+
 func finalizeOldDB() {
 	if !hasOldDB() {
 		return
