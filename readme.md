@@ -328,13 +328,14 @@ settings:
   text_intent:
     - "ATMessageEventHandler"                          # 频道 @ 消息
     - "DirectMessageHandler"                           # 频道私信
+    - "ReadyHandler"                                   # 连接成功
+    - "ErrorNotifyHandler"                             # 连接关闭
     - "GroupATMessageEventHandler"                     # 群 @ 消息
     - "GroupMessageEventHandler"                       # 群普通消息
-    - "C2CMessageEventHandler"                         # 群私聊
-    - "GroupAddRobotEventHandler"                      # 机器人被邀入群
-    - "GroupDelRobotEventHandler"                      # 机器人被移出群
     - "GroupMemberAddEventHandler"                     # 群成员新增
     - "GroupMemberRemoveEventHandler"                  # 群成员移除
+    - "C2CMessageEventHandler"                         # 群私聊
+  discover_unknown_events: false                       # 探测未文档化事件
 
   #── 消息转换 ────────────────────────────────────────
   global_channel_to_group: true                        # 频道事件转群事件
