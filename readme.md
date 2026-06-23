@@ -298,6 +298,124 @@ todo,正在施工...
 
 </details>
 
+## 完整配置示例
+
+首次运行会自动生成 `config.yml`，以下为完整配置项及说明（敏感值已脱敏）：
+
+```yaml
+version: 1
+settings:
+  #── 反向 WebSocket ──────────────────────────────────
+  ws_address: ["ws://127.0.0.1:8080/onebot/v11/ws"]   # 后端 OneBot 适配器地址
+  ws_token: ["your_ws_token_here"]                    # 对应 ws_address 的 token
+  reconnect_times: 100                                 # 断线重连次数
+  heart_beat_interval: 5                               # 心跳间隔（秒）
+  launch_reconnect_times: 1                            # 启动时重连次数
+
+  #── 基础设置 ────────────────────────────────────────
+  app_id: 123456789                                    # QQ 开放平台应用 ID
+  uin: 0                                               # 机器人 QQ 号
+  use_uin: false                                       # 使用 QQ 号作为 bot ID
+  token: "your_app_token"                              # 应用令牌
+  client_secret: "your_client_secret"                  # 客户端密钥
+  idmap_isolation: false                               # 多 Bot 共用数据库时加 UIN 前缀隔离
+  idmap_legacy_compat: false                           # 同时写入旧格式 key 兼容官方版
+  shard_count: 1                                       # 分片数量
+  shard_id: 0                                          # 当前分片 ID
+  shard_num: 1                                         # 限频时可调大，尝试多分片
+
+  #── 事件订阅 ────────────────────────────────────────
+  text_intent:
+    - "ATMessageEventHandler"                          # 频道 @ 消息
+    - "DirectMessageHandler"                           # 频道私信
+    - "GroupATMessageEventHandler"                     # 群 @ 消息
+    - "GroupMessageEventHandler"                       # 群普通消息
+    - "C2CMessageEventHandler"                         # 群私聊
+    - "GroupAddRobotEventHandler"                      # 机器人被邀入群
+    - "GroupDelRobotEventHandler"                      # 机器人被移出群
+    - "GroupMemberAddEventHandler"                     # 群成员新增
+    - "GroupMemberRemoveEventHandler"                  # 群成员移除
+
+  #── 消息转换 ────────────────────────────────────────
+  global_channel_to_group: true                        # 频道事件转群事件
+  global_private_to_channel: false                     # 私聊转频道事件
+  global_forum_to_channel: false                       # 帖子转频道事件
+  hash_id: true                                        # 使用 hash 生成虚拟 ID
+  idmap_pro: false                                     # 高级 ID 映射（需 hash_id）
+  array: false                                         # 使用 segment 数组格式上报
+
+  #── Gensokyo 互联 ───────────────────────────────────
+  server_dir: "your_server_ip_or_domain"               # Lotus 地址
+  port: "15630"                                        # HTTP 服务端口
+  lotus: false                                         # 启用 Lotus 模式
+  lotus_grpc: false                                    # 使用 gRPC 进行 Lotus 连接
+
+  #── WebSocket ──────────────────────────────────────
+  enable_ws_server: true                               # 启用正向 WebSocket
+  ws_server_path: "ws"                                 # 正向 WS 路径
+  ws_server_token: ""                                  # 正向 WS token
+
+  #── SSL 与域名校验 ─────────────────────────────────
+  identify_file: true                                  # 自动生成域名校验文件
+  crt: ""                                              # SSL 证书路径
+  key: ""                                              # SSL 密钥路径
+  force_ssl: false                                     # 强制启用 SSL
+
+  #── HTTP API ───────────────────────────────────────
+  http_address: ""                                     # HTTP API 监听地址
+  http_access_token: ""                                # HTTP API token
+  post_url: [""]                                       # 反向 HTTP POST 地址
+  post_secret: [""]                                    # 反向 HTTP POST 密钥
+
+  #── 日志 ────────────────────────────────────────────
+  developer_log: false                                 # 开启开发者日志
+  log_level: 1                                         # 0=debug 1=info 2=warn 3=error
+  save_logs: false                                     # 保存日志文件
+
+  #── WebUI ───────────────────────────────────────────
+  disable_webui: false                                 # 禁用 Web 管理面板
+  server_user_name: "admin"                            # 面板用户名
+  server_user_password: "admin"                        # 面板密码
+
+  #── 指令控制 ───────────────────────────────────────
+  remove_prefix: false                                 # 忽略指令前 /
+  remove_at: false                                     # 忽略指令前 @
+  white_prefix_mode: false                             # 指令白名单模式
+  black_prefix_mode: false                             # 指令黑名单模式
+
+  #── Markdown 消息 ──────────────────────────────────
+  twoway_echo: false                                   # 启用双向 echo
+  native_md: false                                     # 启用原生 Markdown
+  custom_template_id: ""                               # 图文转 MD 模板 ID
+  keyboard_id: ""                                      # 图文转 MD 按钮 ID
+
+  #── 消息发送 ──────────────────────────────────────
+  memory_msgid: false                                  # 使用内存存储 msg_id
+  lazy_message_id: false                               # 惰性 message_id
+  send_delay: 300                                      # 发送间隔（毫秒）
+  threads_ret_msg: false                               # 异步发送回执
+  no_ret_msg: false                                    # 禁用回执（提升性能）
+
+  #── 云存储 ─────────────────────────────────────────
+  oss_type: 0                                          # 0=本机 1=腾讯COS 2=百度BOS 3=阿里OSS
+  # 腾讯云 COS 配置（oss_type=1 时需填写）
+  t_COS_BUCKETNAME: ""
+  t_COS_REGION: ""
+  t_COS_SECRETID: ""
+  t_COS_SECRETKEY: ""
+  # 百度云 BOS 配置（oss_type=2 时需填写）
+  b_BOS_BUCKETNAME: ""
+  b_BCE_AK: ""
+  b_BCE_SK: ""
+  # 阿里云 OSS 配置（oss_type=3 时需填写）
+  a_OSS_EndPoint: ""
+  a_OSS_BucketName: ""
+  a_OSS_AccessKeyId: ""
+  a_OSS_AccessKeySecret: ""
+```
+
+> 完整文档请参阅 [docs/开始使用.md](./docs/开始使用.md) 和 [docs/idmap.md](./docs/idmap.md)
+
 ## 关于 ISSUE
 
 以下 ISSUE 会被直接关闭
