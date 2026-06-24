@@ -192,7 +192,7 @@ func StartMigration() {
 所有外部调用的 API 签名**完全不变**，迁移只是在内部修改了数据路由：
 
 | 外部函数（不变） | 内部路由逻辑 |
-|-----------------|-------------|------|
+|-----------------|-------------|
 | `StoreIDv2(id)` | 迁移未完成 → `StoreID` + `newDBStore`（双写）<br>迁移完成后 → `storeIdentity`（纯新库） |
 | `StoreCachev2(id)` | 迁移未完成 → `StoreCache` + `newDBMsgStore`（双写）<br>迁移完成后 → `StoreMsgID`（纯新库，带 6min 自动过期） |
 | `RetrieveRowByIDv2(rowid)` | 始终 → `newDBLookup`（新库优先）→ 旧库回退 |
