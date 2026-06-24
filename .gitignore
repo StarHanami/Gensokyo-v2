@@ -30,3 +30,6 @@ data/
 
 # ignore external workflow file
 .github/workflows/build.yml
+Processor/sensitive_words_in.txt
+Processor/sensitive_words_out.txt
+Processor/white.txt

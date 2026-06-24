@@ -74,6 +74,7 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 				return nil
 			}
 		}
+		mylog.Printf("[message] group id mapped: raw_group=%s vGroup=%d raw_user=%s vUser=%d", data.GroupID, GroupID64, data.Author.ID, userid64)
 	}
 
 	// 前置兼容：遍历 Mentions 数组，移除 bot 自己的 <@OpenID> / <@!OpenID>
@@ -143,6 +144,7 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 			log.Fatalf("Error storing ID: %v", err)
 		}
 		messageID = int(messageID64)
+		mylog.Printf("[message] group msg_id mapped: raw_msg=%s vMsg=%d", data.ID, messageID64)
 	}
 
 	if config.GetAutoBind() {
@@ -198,8 +200,8 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 			// ------ 修改 start ------
 			SubType: "normal",
 			// ------ 修改 end ------
-			Time:    time.Now().Unix(),
-			ToMe:    toMe,
+			Time: time.Now().Unix(),
+			ToMe: toMe,
 		}
 		if !config.GetNativeOb11() {
 			groupMsg.RealMessageType = "group"
@@ -271,7 +273,7 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 				Level:  "0",
 			},
 			// ------ 修改 start ------
-			SubType:  "normal",
+			SubType: "normal",
 			// ------ 修改 end ------
 			Time:     time.Now().Unix(),
 			ToMe:     toMe,

@@ -53,6 +53,13 @@ type normalizedIdentity struct {
 	Platform string
 }
 
+type legacyMigrationStats struct {
+	MaxVuin          int64
+	ForwardEntries   int
+	ReverseEntries   int
+	CompositeEntries int
+}
+
 func initNewDBs() {
 	newDBOnce.Do(func() {
 		var err error
@@ -145,10 +152,17 @@ func markMigrationComplete(maxVuin int64) error {
 func migrateLegacyIDMap() error {
 	mylog.Printf("[idmap] 检测到旧 %s，开始一次性转换到 %s / %s", DBName, IdentityDBName, MsgDBName)
 
-	maxVuin, err := migrateLegacyIdentities()
+	stats, err := migrateLegacyIdentities()
 	if err != nil {
 		return err
 	}
+	mylog.Printf(
+		"[idmap] 旧 ids 转换完成: forward=%d reverse=%d composite=%d max_vuin=%d",
+		stats.ForwardEntries,
+		stats.ReverseEntries,
+		stats.CompositeEntries,
+		stats.MaxVuin,
+	)
 	if err := copyLegacyBucket(ConfigBucket, identityDB, ConfigBucket); err != nil {
 		return err
 	}
@@ -158,16 +172,16 @@ func migrateLegacyIDMap() error {
 	if msgMax, err := syncLegacyMsgCounter(); err == nil && msgMax > 0 {
 		mylog.Printf("[idmap] 已同步旧 message_id counter: %d", msgMax)
 	}
-	if err := markMigrationComplete(maxVuin); err != nil {
+	if err := markMigrationComplete(stats.MaxVuin); err != nil {
 		return err
 	}
 
-	mylog.Printf("[idmap] 旧库转换完成，最大 vUIN=%d；旧 %s 已保留，可确认稳定后手动备份或删除", maxVuin, DBName)
+	mylog.Printf("[idmap] 旧库转换完成，最大 vUIN=%d；旧 %s 已保留，可确认稳定后手动备份或删除", stats.MaxVuin, DBName)
 	return nil
 }
 
-func migrateLegacyIdentities() (int64, error) {
-	var maxVuin int64
+func migrateLegacyIdentities() (legacyMigrationStats, error) {
+	var stats legacyMigrationStats
 	err := db.View(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(BucketName))
 		if b == nil {
@@ -177,7 +191,7 @@ func migrateLegacyIdentities() (int64, error) {
 			key := string(k)
 			if key == CounterKey {
 				if len(v) == 8 {
-					maxVuin = max(maxVuin, int64(binary.BigEndian.Uint64(v)))
+					stats.MaxVuin = max(stats.MaxVuin, int64(binary.BigEndian.Uint64(v)))
 				}
 				return nil
 			}
@@ -187,19 +201,22 @@ func migrateLegacyIdentities() (int64, error) {
 				if !ok {
 					return nil
 				}
-				maxVuin = max(maxVuin, vuin)
+				stats.MaxVuin = max(stats.MaxVuin, vuin)
+				stats.ReverseEntries++
 				return bindIdentityToVuinInternal(string(v), vuin)
 			}
 
 			if len(v) == 8 {
 				vuin := int64(binary.BigEndian.Uint64(v))
-				maxVuin = max(maxVuin, vuin)
+				stats.MaxVuin = max(stats.MaxVuin, vuin)
+				stats.ForwardEntries++
 				return bindIdentityToVuinInternal(key, vuin)
 			}
 
 			if ids, vuins, ok := parseLegacyComposite(key, string(v)); ok {
 				for i := range ids {
-					maxVuin = max(maxVuin, vuins[i])
+					stats.MaxVuin = max(stats.MaxVuin, vuins[i])
+					stats.CompositeEntries++
 					if err := bindIdentityToVuinInternal(ids[i], vuins[i]); err != nil {
 						return err
 					}
@@ -208,7 +225,7 @@ func migrateLegacyIdentities() (int64, error) {
 			return nil
 		})
 	})
-	return maxVuin, err
+	return stats, err
 }
 
 func parseLegacyRowKey(key string) (int64, bool) {
@@ -302,6 +319,7 @@ func storeIdentity(raw string) (int64, error) {
 	identity := normalizeIdentity(raw)
 
 	var vuin int64
+	created := false
 	err := identityDB.Update(func(tx *bbolt.Tx) error {
 		idB := tx.Bucket([]byte(identityToVuinBucket))
 		if existing := idB.Get([]byte(identity.Key)); len(existing) == 8 {
@@ -314,8 +332,16 @@ func storeIdentity(raw string) (int64, error) {
 			return err
 		}
 		vuin = next
+		created = true
 		return putIdentityMappingTx(tx, identity, vuin)
 	})
+	if err == nil {
+		if created {
+			mylog.Printf("[idmap] identity create: %s -> vUIN=%d", identityLogValue(identity), vuin)
+		} else {
+			mylog.Printf("[idmap] identity hit: %s -> vUIN=%d", identityLogValue(identity), vuin)
+		}
+	}
 	return vuin, err
 }
 
@@ -330,10 +356,12 @@ func bindIdentityToVuinInternal(raw string, vuin int64) error {
 func bindVuin(oldVuin, newVuin int64) error {
 	initNewDBs()
 	if oldVuin == newVuin {
+		mylog.Printf("[idmap] bind skipped: old_vuin=%d new_vuin=%d", oldVuin, newVuin)
 		return nil
 	}
 
-	return identityDB.Update(func(tx *bbolt.Tx) error {
+	movedCount := 0
+	err := identityDB.Update(func(tx *bbolt.Tx) error {
 		revB := tx.Bucket([]byte(vuinToIdentityBucket))
 		prefix := []byte(vuinPrefix(oldVuin))
 		var moved []normalizedIdentity
@@ -354,9 +382,18 @@ func bindVuin(oldVuin, newVuin int64) error {
 				return err
 			}
 		}
+		movedCount = len(moved)
 		_ = tx.Bucket([]byte(lastSeenBucket)).Delete([]byte(lastSeenKey(oldVuin)))
 		return nil
 	})
+	if err != nil {
+		mylog.Printf("[idmap] bind failed: old_vuin=%d new_vuin=%d error=%v", oldVuin, newVuin, err)
+		return err
+	}
+	if movedCount > 0 {
+		mylog.Printf("[idmap] bind moved: old_vuin=%d new_vuin=%d identities=%d", oldVuin, newVuin, movedCount)
+	}
+	return nil
 }
 
 func lookupVirtualIdentity(raw string) (int64, bool) {
@@ -377,6 +414,7 @@ func retrieveIdentity(virtualID string) (string, error) {
 	initNewDBs()
 	vuin, err := strconv.ParseInt(virtualID, 10, 64)
 	if err != nil || vuin <= 0 {
+		mylog.Printf("[idmap] identity lookup invalid: vUIN=%s", virtualID)
 		return "", ErrKeyNotFound
 	}
 
@@ -409,8 +447,10 @@ func retrieveIdentity(virtualID string) (string, error) {
 		return nil
 	})
 	if err != nil || selected == "" {
+		mylog.Printf("[idmap] identity lookup miss: vUIN=%s", virtualID)
 		return "", ErrKeyNotFound
 	}
+	mylog.Printf("[idmap] identity lookup hit: vUIN=%s -> %s", virtualID, selected)
 	return selected, nil
 }
 
@@ -510,6 +550,13 @@ func normalizeIdentity(raw string) normalizedIdentity {
 	}
 }
 
+func identityLogValue(identity normalizedIdentity) string {
+	if identity.Platform == "" {
+		return fmt.Sprintf("kind=%s raw=%s key=%s", identity.Kind, identity.Raw, identity.Key)
+	}
+	return fmt.Sprintf("kind=%s platform=%s raw=%s key=%s", identity.Kind, identity.Platform, identity.Raw, identity.Key)
+}
+
 func parseRUIN(raw string) (normalizedIdentity, bool) {
 	if !strings.HasPrefix(strings.ToLower(raw), "ruin-") {
 		return normalizedIdentity{}, false
@@ -573,6 +620,7 @@ func StoreMsgID(realMsgID string) (int64, error) {
 	}
 
 	var virtualID int64
+	created := false
 	err := msgDB.Update(func(tx *bbolt.Tx) error {
 		msgB := tx.Bucket([]byte(msgToVirtualBucket))
 		revB := tx.Bucket([]byte(virtualToMsgBucket))
@@ -591,6 +639,7 @@ func StoreMsgID(realMsgID string) (int64, error) {
 			return err
 		}
 		virtualID = next
+		created = true
 		if err := putInt64(msgB, []byte(realMsgID), virtualID); err != nil {
 			return err
 		}
@@ -599,6 +648,13 @@ func StoreMsgID(realMsgID string) (int64, error) {
 		}
 		return putInt64(expB, []byte(strconv.FormatInt(virtualID, 10)), expires)
 	})
+	if err == nil {
+		if created {
+			mylog.Printf("[idmap] msg_id create: real=%s -> virtual=%d ttl_seconds=%d", realMsgID, virtualID, expires-now)
+		} else {
+			mylog.Printf("[idmap] msg_id hit: real=%s -> virtual=%d ttl_refreshed_seconds=%d", realMsgID, virtualID, expires-now)
+		}
+	}
 	return virtualID, err
 }
 
@@ -609,6 +665,7 @@ func RetrieveMsgID(virtualID string) (string, error) {
 	err := msgDB.View(func(tx *bbolt.Tx) error {
 		expB := tx.Bucket([]byte(msgExpiresBucket))
 		if exp := readInt64(expB.Get([]byte(virtualID))); exp > 0 && exp < now {
+			mylog.Printf("[idmap] msg_id lookup expired: virtual=%s expired_at=%d now=%d", virtualID, exp, now)
 			return ErrKeyNotFound
 		}
 		if v := tx.Bucket([]byte(virtualToMsgBucket)).Get([]byte(virtualID)); v != nil {
@@ -618,14 +675,16 @@ func RetrieveMsgID(virtualID string) (string, error) {
 		return ErrKeyNotFound
 	})
 	if err != nil || real == "" {
+		mylog.Printf("[idmap] msg_id lookup miss: virtual=%s", virtualID)
 		return "", ErrKeyNotFound
 	}
+	mylog.Printf("[idmap] msg_id lookup hit: virtual=%s -> real=%s", virtualID, real)
 	return real, nil
 }
 
 func CleanMsgDB() error {
 	initNewDBs()
-	return msgDB.Update(func(tx *bbolt.Tx) error {
+	err := msgDB.Update(func(tx *bbolt.Tx) error {
 		for _, bucket := range []string{msgToVirtualBucket, virtualToMsgBucket, msgExpiresBucket} {
 			if err := recreateBucket(tx, bucket); err != nil {
 				return err
@@ -633,6 +692,10 @@ func CleanMsgDB() error {
 		}
 		return tx.Bucket([]byte(msgMetaBucket)).Delete([]byte(msgCounterKey))
 	})
+	if err == nil {
+		mylog.Printf("[idmap] msg_id cache cleaned: %s", MsgDBName)
+	}
+	return err
 }
 
 func allocateMsgIDTx(tx *bbolt.Tx) (int64, error) {

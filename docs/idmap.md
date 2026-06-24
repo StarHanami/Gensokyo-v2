@@ -39,6 +39,8 @@
 | OAuth/GitHub rUIN | `ruin:OAuth_Github:<index>:<id>` |
 | 旧版或未分类原始值 | `raw:<value>` |
 
+QQ OpenID 的身份键只包含 `QQ`、`AppID` 和 OpenID 本体，不再按群聊、私聊或群成员事件拆分。QQ 平台下同一个 QQ 号在同一个 AppID 内应复用同一个 OpenID，因此群聊、C2C、好友事件、群成员事件都会落到同一个 vUIN。频道相关 ID 暂不纳入本轮重构，继续沿用现有逻辑。
+
 对外传递 rUIN 时使用：
 
 ```text
@@ -130,6 +132,15 @@ msgid_ttl_seconds: 3600
 - `expires_at[virtual_message_id] = now + ttl`
 
 后台清理每分钟扫描 `expires_at`，删除过期的三条记录。旧库 `cache` 不再全量迁移，避免把大量历史临时数据搬进新库。
+
+## 运行日志
+
+新 idmap 热路径默认输出状态日志，便于把平台原始事件和内部映射结果对齐：
+
+- `[idmap] identity create/hit`：OpenID/rUIN/raw 身份新建或命中，并显示对应 vUIN。
+- `[idmap] bind moved/skipped/failed`：手动或自动绑定时移动身份集合的结果。
+- `[idmap] msg_id create/hit/lookup`：真实 message_id 与虚拟 message_id 的写入、刷新 TTL、反查结果。
+- `[message] group/c2c/friend/group_member ... mapped`：Processor 层事件最终映射出的 vUIN 与虚拟 message_id。
 
 ## 兼容性
 
