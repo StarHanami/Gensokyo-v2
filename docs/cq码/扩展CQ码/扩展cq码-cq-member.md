@@ -6,8 +6,6 @@
 
 入站事件使用标准 OneBot V11 通知格式（`notice.group_increase` / `notice.group_decrease`），`message` 字段中附带 CQ 码供后端解析。出站仍为普通 `send_group_msg`。
 
-> ⚠️ **迁移提示**: 旧版 Gensokyo 以 `message` 类型发送 `[CQ:member]`，插件使用 `on_message` 即可。新版已切换为标准 OneBot V11 notice 格式，插件**必须改用 `on_notice`**，否则收不到事件。详见下方后端示例。
-
 ## 格式
 
 ```
