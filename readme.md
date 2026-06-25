@@ -64,7 +64,7 @@ Gensokyo 是一款兼容 [OneBot V11](https://github.com/botuniverse/onebot-11) 
 -  兼容 OneBot V11 的 HTTP API、反向 HTTP POST、正向 WebSocket、反向 WebSocket
 -  群聊非@消息支持（GroupMessageEventHandler）
 -  群聊消息自动剔除 @机器人字符
--  非自身 @ 自动转为 `[CQ:at,qq=虚拟ID]` 格式
+-  非自身 @ 可配置转换为已有 idmap 的 `[CQ:at,qq=虚拟ID]` 格式
 -  按钮权限中虚拟数字 ID 自动转化为 QQ 官方 OpenID
 -  扩展 API：`get_avatar`（获取头像直链）
 -  全场景 event_id 存储，支持被动消息
@@ -337,6 +337,7 @@ settings:
     - "GroupMemberRemoveEventHandler"                  # 群成员移除
     - "C2CMessageEventHandler"                         # 群私聊
   discover_unknown_events: false                       # 探测未文档化事件
+  suppress_disallowed_intents: false                   # 仅屏蔽已在 text_intent 启用的高风险 intent bit, 不自动注册 handler
 
   #── 消息转换 ────────────────────────────────────────
   global_channel_to_group: true                        # 频道事件转群事件
@@ -344,6 +345,7 @@ settings:
   global_forum_to_channel: false                       # 帖子转频道事件
   hash_id: true                                        # 使用 hash 生成虚拟 ID
   op_userid_type: "vuin"                               # 下游 user_id/group_id 来源: vuin/raw/ruin
+  convert_other_at: false                              # 非机器人自身的 <@OpenID> 仅在已有 idmap 映射且开启时转换
   msgid_ttl_seconds: 3600                              # message_id 映射保留时间
   array: false                                         # 使用 segment 数组格式上报
 

@@ -97,6 +97,7 @@ type Settings struct {
 	//指令魔法类
 	RemovePrefix        bool                 `yaml:"remove_prefix"`
 	RemoveAt            bool                 `yaml:"remove_at"`
+	ConvertOtherAt      bool                 `yaml:"convert_other_at"`
 	RemoveBotAtGroup    bool                 `yaml:"remove_bot_at_group"`
 	AddAtGroup          bool                 `yaml:"add_at_group"`
 	WhitePrefixMode     bool                 `yaml:"white_prefix_mode"`
@@ -215,7 +216,8 @@ type Settings struct {
 	// 额外 intent 位探测（用于发现未文档化的事件位）
 	ExtraIntents []int `yaml:"extra_intents"`
 	// 发现未知事件开关——自动订阅所有未使用的 intent 位
-	DiscoverUnknownEvents bool `yaml:"discover_unknown_events"`
+	DiscoverUnknownEvents     bool `yaml:"discover_unknown_events"`
+	SuppressDisallowedIntents bool `yaml:"suppress_disallowed_intents"`
 }
 
 type VisualPrefixConfig struct {

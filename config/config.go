@@ -774,6 +774,18 @@ func GetRemoveAt() bool {
 	return instance.Settings.RemoveAt
 }
 
+// 获取ConvertOtherAt的值
+func GetConvertOtherAt() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	if instance == nil {
+		fmt.Println("Warning: instance is nil when trying to get ConvertOtherAt value.")
+		return false
+	}
+	return instance.Settings.ConvertOtherAt
+}
+
 // 获取port的值
 func GetPortValue() string {
 	mu.RLock()
@@ -1854,6 +1866,15 @@ func GetDiscoverUnknownEvents() bool {
 		return false
 	}
 	return instance.Settings.DiscoverUnknownEvents
+}
+
+func GetSuppressDisallowedIntents() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	if instance == nil {
+		return false
+	}
+	return instance.Settings.SuppressDisallowedIntents
 }
 
 // 获取Alias的值

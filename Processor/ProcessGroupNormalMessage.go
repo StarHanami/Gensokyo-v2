@@ -84,26 +84,13 @@ func (p *Processors) ProcessGroupNormalMessage(data *dto.WSGroupMessageData) err
 	for _, mention := range data.Mentions {
 		if mention.IsYou {
 			toMe = true
+			handlers.RememberSelfAtID(mention.ID)
 			reMention := regexp.MustCompile(`<@!?` + regexp.QuoteMeta(mention.ID) + `>`)
 			data.Content = reMention.ReplaceAllString(data.Content, "")
 			break
 		}
 	}
-	// 遍历非自身 @，将其转化为 CQ at 码，并建立虚拟 ID 映射
-	// 仅在非 array 模式下进行，array 模式下 ConvertToSegmentedMessage 会处理
-	if !config.GetArrayValue() {
-		for _, mention := range data.Mentions {
-			if !mention.IsYou {
-				userID64, err := idmap.StoreIDv2(mention.ID)
-				if err != nil {
-					mylog.Printf("Error storing mention ID: %v", err)
-				}
-				cqAt := "[CQ:at,qq=" + strconv.FormatInt(userID64, 10) + "]"
-				reMention := regexp.MustCompile(`<@!?` + regexp.QuoteMeta(mention.ID) + `>`)
-				data.Content = reMention.ReplaceAllString(data.Content, cqAt)
-			}
-		}
-	}
+	// 非自身 @ 统一交给 RevertTransformedText / ConvertToSegmentedMessage 处理，避免陌生 OpenID 写入 idmap。
 	data.Content = strings.TrimSpace(data.Content)
 
 	messageText := data.Content

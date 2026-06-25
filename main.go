@@ -270,6 +270,7 @@ func main() {
 
 			// 定义和初始化intent变量
 			var intent dto.Intent = 0
+			enabledHandlers := make(map[string]bool)
 
 			//动态订阅intent
 			for _, handlerName := range conf.Settings.TextIntent {
@@ -278,6 +279,7 @@ func main() {
 					log.Printf("Unknown handler: %s\n", handlerName)
 					continue
 				}
+				enabledHandlers[handlerName] = true
 
 				//多次位与 并且订阅事件
 				intent |= websocket.RegisterHandlers(handler)
@@ -292,17 +294,18 @@ func main() {
 				log.Printf("发现未知事件模式已启用，额外订阅的 intent 位: %v", unknownBits)
 			}
 
-			log.Printf("注册 intents: %v\n", intent)
-
 			// 自动订阅：开启 global_group_msg_rre_to_message 时自动注册两个群推送开关事件
 			if config.GetGlobalGroupMsgRejectReciveEventToMessage() {
 				for _, name := range []string{"GroupMsgRejectHandler", "GroupMsgReceiveHandler"} {
 					if handler, ok := getHandlerByName(name); ok {
+						enabledHandlers[name] = true
 						intent |= websocket.RegisterHandlers(handler)
 						log.Printf("自动订阅 intent: %s（global_group_msg_rre_to_message 开启）", name)
 					}
 				}
 			}
+			intent = applyDisallowedIntentPolicy(intent, enabledHandlers)
+			log.Printf("注册 intents: %v\n", intent)
 
 			// 确保p包含conf
 			p = Processor.NewProcessorV2(api, apiV2, &conf.Settings)
@@ -509,15 +512,8 @@ func main() {
 	http_api_address := config.GetHttpAddress()
 	if http_api_address != "" {
 		mylog.Println("正向http api启动成功,监听" + http_api_address + "若有需要,请对外放通端口...")
-		HttpApiGroup := hr.Group("/")
-		{
-			HttpApiGroup.GET("/metrics", MetricsHandler)
-			HttpApiGroup.GET("/*filepath", httpapi.CombinedMiddleware(api, apiV2))
-			HttpApiGroup.POST("/*filepath", httpapi.CombinedMiddleware(api, apiV2))
-			HttpApiGroup.PUT("/*filepath", httpapi.CombinedMiddleware(api, apiV2))
-			HttpApiGroup.DELETE("/*filepath", httpapi.CombinedMiddleware(api, apiV2))
-			HttpApiGroup.PATCH("/*filepath", httpapi.CombinedMiddleware(api, apiV2))
-		}
+		hr.GET("/metrics", MetricsHandler)
+		hr.NoRoute(httpapi.CombinedMiddleware(api, apiV2))
 	}
 	//正向ws
 	if conf.Settings.AppID != 12345 {
@@ -983,6 +979,66 @@ func getHandlerByName(handlerName string) (interface{}, bool) {
 		log.Printf("Unknown handler: %s\n", handlerName)
 		return nil, false
 	}
+}
+
+func applyDisallowedIntentPolicy(intent dto.Intent, enabledHandlers map[string]bool) dto.Intent {
+	if !config.GetSuppressDisallowedIntents() {
+		return intent
+	}
+
+	before := intent
+	var suppressed []string
+
+	groupMemberIntent := dto.EventToIntent(dto.EventGroupMemberAdd, dto.EventGroupMemberRemove)
+	if enabledHandlers["GroupMemberAddEventHandler"] || enabledHandlers["GroupMemberRemoveEventHandler"] {
+		if intent&groupMemberIntent != 0 {
+			intent &^= groupMemberIntent
+			suppressed = append(suppressed, fmt.Sprintf("GroupMemberAdd/Remove=%d", groupMemberIntent))
+		}
+	}
+
+	guildMessageIntent := dto.EventToIntent(dto.EventMessageCreate, dto.EventMessageDelete)
+	if enabledHandlers["CreateMessageHandler"] {
+		if intent&guildMessageIntent != 0 {
+			intent &^= guildMessageIntent
+			suppressed = append(suppressed, fmt.Sprintf("CreateMessageHandler/IntentGuildMessages=%d", guildMessageIntent))
+		}
+	}
+
+	groupMessageIntent := dto.EventToIntent(dto.EventGroupMessageCreate)
+	if enabledHandlers["GroupMessageEventHandler"] && intent&groupMessageIntent != 0 {
+		if hasAnyHandler(enabledHandlers,
+			"GroupATMessageEventHandler",
+			"C2CMessageEventHandler",
+			"GroupAddRobotEventHandler",
+			"GroupDelRobotEventHandler",
+			"GroupMsgRejectHandler",
+			"GroupMsgReceiveHandler",
+			"FriendAddEventHandler",
+			"FriendDelEventHandler",
+			"C2CMsgRejectHandler",
+			"C2CMsgReceiveHandler",
+		) {
+			log.Printf("suppress_disallowed_intents: GroupMessageEventHandler 仅注册本地处理器，复用现有 IntentGroupMessages=%d", groupMessageIntent)
+		} else {
+			intent &^= groupMessageIntent
+			suppressed = append(suppressed, fmt.Sprintf("GroupMessageEventHandler/IntentGroupMessages=%d", groupMessageIntent))
+		}
+	}
+
+	if len(suppressed) > 0 {
+		log.Printf("suppress_disallowed_intents: 已从 Identify intents 屏蔽 %s，before=%d after=%d", strings.Join(suppressed, ", "), before, intent)
+	}
+	return intent
+}
+
+func hasAnyHandler(enabledHandlers map[string]bool, names ...string) bool {
+	for _, name := range names {
+		if enabledHandlers[name] {
+			return true
+		}
+	}
+	return false
 }
 
 // allEmpty checks if all the strings in the slice are empty.

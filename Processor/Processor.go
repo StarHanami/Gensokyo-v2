@@ -553,9 +553,14 @@ func (p *Processors) HandleFrameworkCommand(messageText string, data interface{}
 			mylog.Printf("根据realid获取new(用户id) 错误:%v", err)
 		}
 		// 根据realid获取new(群id)
-		nowgroup, newgroup, err = idmap.RetrieveVirtualValuev2(realid2)
-		if err != nil {
-			mylog.Printf("根据realid获取new(群id)错误:%v", err)
+		if realid2 != "group_private" {
+			nowgroup, newgroup, err = idmap.RetrieveVirtualValuev2(realid2)
+			if err != nil {
+				mylog.Printf("根据realid获取new(群id)错误:%v", err)
+			}
+		} else {
+			nowgroup = realid2
+			newgroup = ""
 		}
 	}
 	// 检查真实值或虚拟值是否在数组中
@@ -612,7 +617,11 @@ func (p *Processors) HandleFrameworkCommand(messageText string, data interface{}
 			message := fmt.Sprintf("idmaps-pro状态:\n%s\n%s\n%s", userMapping, groupMapping, bindInstruction)
 			SendMessage(message, data, Type, p.Api, p.Apiv2)
 		} else {
-			SendMessage("目前状态:\n当前真实值(用户) "+now+"\n当前虚拟值(用户) "+new+"\n当前真实值(群/频道) "+nowgroup+"\n当前虚拟值(群/频道) "+newgroup+"\nbind指令:"+config.GetBindPrefix()+" 当前虚拟值"+" 目标虚拟值", data, Type, p.Api, p.Apiv2)
+			if Type == "group_private" {
+				SendMessage("目前状态:\n当前真实值(用户) "+now+"\n当前虚拟值(用户) "+new+"\nbind指令:"+config.GetBindPrefix()+" 当前虚拟值"+" 目标虚拟值", data, Type, p.Api, p.Apiv2)
+			} else {
+				SendMessage("目前状态:\n当前真实值(用户) "+now+"\n当前虚拟值(用户) "+new+"\n当前真实值(群/频道) "+nowgroup+"\n当前虚拟值(群/频道) "+newgroup+"\nbind指令:"+config.GetBindPrefix()+" 当前虚拟值"+" 目标虚拟值", data, Type, p.Api, p.Apiv2)
+			}
 		}
 		return nil
 	}

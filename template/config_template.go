@@ -75,6 +75,7 @@ settings:
   master_id : ["1","2"]             #群场景尚未开放获取管理员和列表能力,手动从日志中获取需要设置为管理,的user_id并填入(适用插件有权限判断场景)
   record_sampleRate : 24000         #语音文件的采样率 最高48000 默认24000 单位Khz
   discover_unknown_events: false    #订阅所有未使用的intent位,用于探测QQ API未文档化的事件（如GROUP_MEMBER_ADD）。日志将输出未知事件类型
+  suppress_disallowed_intents: false #开启后仅屏蔽已在text_intent启用的高风险intent位,不自动注册handler
   record_bitRate : 24000            #语音文件的比特率 默认25000 代表 25 kbps 最高无限 请根据带宽 您发送的实际码率调整
   card_nick : ""                    #默认为空,连接mirai-overflow时,请设置为非空,这里是机器人对用户称谓,为空为插件获取,mirai不支持
   auto_bind : true                  #测试功能,后期会移除
@@ -123,6 +124,7 @@ settings:
   #指令魔法类
   remove_prefix : false             #是否忽略公域机器人指令前第一个/
   remove_at : false                 #是否忽略公域机器人指令前第一个[CQ:aq,qq=机器人] 场景(公域机器人,但插件未适配at开头)
+  convert_other_at : false          #是否将消息中非机器人自身的<@OpenID>转成已有idmap映射; false时保留原文,避免假at创建映射
   remove_bot_at_group : true        #因为群聊机器人不支持发at,开启本开关会自动隐藏群机器人发出的at(不影响频道场景)
   add_at_group : false              #自动在群聊指令前加上at,某些机器人写法特别,必须有at才反应时,请打开,默认请关闭(如果需要at,不需要at指令混杂,请优化代码适配群场景,群场景目前没有at概念)
 
