@@ -86,9 +86,9 @@ type Settings struct {
 	SaveLogs                bool `yaml:"save_logs"`
 	LogSuffixPerMins        int  `yaml:"log_suffix_per_mins"`
 	LogColorEnabled         bool `yaml:"log_color_enabled"`
-	LogJsonOutput           bool `yaml:"log_json_output"`
 	LogMaxAgeDays           int  `yaml:"log_max_age_days"`
 	LogMaxSizeMB            int  `yaml:"log_max_size_mb"`
+	LogKeepFiles            int  `yaml:"log_keep_files"`
 	LogSlowEventThresholdMS int  `yaml:"log_slow_event_threshold_ms"`
 	//webui相关
 	DisableWebui bool   `yaml:"disable_webui"`

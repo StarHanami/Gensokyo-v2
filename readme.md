@@ -375,7 +375,10 @@ settings:
   #── 日志 ────────────────────────────────────────────
   developer_log: false                                 # 开启开发者日志
   log_level: 1                                         # 0=debug 1=info 2=warn 3=error
-  save_logs: false                                     # 兼容保留; 本地文件日志仅在启动参数 run --local-logger=enable 时启用
+  save_logs: false                                     # 保存本地日志; 与启动参数 run --local-logger=enable 等效
+  log_max_age_days: 7                                  # 本地日志最大保留天数
+  log_max_size_mb: 24                                  # 单个日志文件大小上限(MB)
+  log_keep_files: 12                                   # 本地旧日志文件最大保留个数
 
   #── WebUI ───────────────────────────────────────────
   disable_webui: false                                 # 禁用 Web 管理面板

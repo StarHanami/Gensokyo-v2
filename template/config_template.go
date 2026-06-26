@@ -108,12 +108,12 @@ settings:
   #日志类
   developer_log : false             #开启开发者日志 默认关闭
   log_level : 1                     # 0=debug 1=info 2=warning 3=error 默认1
-  save_logs : false                 #兼容保留; 本地文件日志仅在启动参数 run --local-logger=enable 时启用
+  save_logs : false                 #是否保存本地日志; 与启动参数 run --local-logger=enable 等效
   log_suffix_per_mins : 0           #默认0,代表不切分日志文件,设置60代表每60分钟储存一个日志文件,如果你的日志文件太大打不开,可以设置这个到合适的时间范围.
   log_color_enabled : true          #控制台日志彩色高亮显示 默认true
-  log_json_output : false           #兼容保留; 当前文件日志为纯文本
-  log_max_age_days : 30             #兼容保留; 当前不自动清理本地日志
-  log_max_size_mb : 100             #兼容保留; 当前不按大小轮转本地日志
+  log_max_age_days : 7              #本地日志最大保留天数 默认7
+  log_max_size_mb : 24              #单个日志文件大小上限(MB) 默认24
+  log_keep_files : 12               #本地旧日志文件最大保留个数 默认12
   log_slow_event_threshold_ms : 500  #慢事件判定耗时阈值(毫秒) 默认500
 
   #webui设置

@@ -1,13 +1,12 @@
 package mylog
 
 import (
-	"compress/gzip"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -131,101 +130,19 @@ func NewMyLogAdapter(level LogLevel, enableFileLog bool) *MyLogAdapter {
 
 func getCurrentLogFilename() string {
 	suffixMins := config.GetLogSuffixPerMins()
-	baseFilename := time.Now().Format("2006-01-02")
+	now := time.Now().UTC()
 	if suffixMins <= 0 {
-		return baseFilename + ".log"
+		dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		return "gensokyo-" + dayStart.Format("2006-01-02T15-04Z") + ".log"
 	}
 
-	now := time.Now()
 	currentMinutes := now.Hour()*60 + now.Minute()
 	windowStartMinutes := (currentMinutes / suffixMins) * suffixMins
 	windowStartHour := windowStartMinutes / 60
 	windowStartMinute := windowStartMinutes % 60
+	windowStart := time.Date(now.Year(), now.Month(), now.Day(), windowStartHour, windowStartMinute, 0, 0, time.UTC)
 
-	return fmt.Sprintf("%s-%02d-%02d.log", baseFilename, windowStartHour, windowStartMinute)
-}
-
-// 独立的日志清除和压缩逻辑
-func CleanLogs(logDir string, maxAgeDays int) {
-	if logDir == "" {
-		return
-	}
-	files, err := os.ReadDir(logDir)
-	if err != nil {
-		return
-	}
-
-	now := time.Now()
-	for _, f := range files {
-		if !f.IsDir() {
-			continue
-		}
-
-		dirName := f.Name()
-		dirTime, err := time.Parse("2006-01-02", dirName)
-		if err != nil {
-			continue // 不是日期文件夹
-		}
-
-		dirPath := filepath.Join(logDir, dirName)
-
-		// 检查是否超过最大保留天数
-		ageLimit := now.AddDate(0, 0, -maxAgeDays)
-		if dirTime.Before(ageLimit) {
-			os.RemoveAll(dirPath)
-			continue
-		}
-
-		// 检查子文件并对超过 7 天的文件进行 gzip 压缩
-		subFiles, err := os.ReadDir(dirPath)
-		if err != nil {
-			continue
-		}
-
-		sevenDaysAgo := now.AddDate(0, 0, -7)
-		for _, sf := range subFiles {
-			if sf.IsDir() {
-				continue
-			}
-			sfName := sf.Name()
-			if strings.HasSuffix(sfName, ".gz") {
-				continue // 已经是压缩文件
-			}
-
-			sfPath := filepath.Join(dirPath, sfName)
-			info, err := os.Stat(sfPath)
-			if err != nil {
-				continue
-			}
-
-			if info.ModTime().Before(sevenDaysAgo) {
-				gzPath := sfPath + ".gz"
-				if err := gzipFile(sfPath, gzPath); err == nil {
-					os.Remove(sfPath)
-				}
-			}
-		}
-	}
-}
-
-func gzipFile(src, dst string) error {
-	f, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	gf, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer gf.Close()
-
-	gw := gzip.NewWriter(gf)
-	defer gw.Close()
-
-	_, err = io.Copy(gw, f)
-	return err
+	return "gensokyo-" + windowStart.Format("2006-01-02T15-04Z") + ".log"
 }
 
 func writeLogToFile(baseDir string, level string, message string) {
@@ -240,16 +157,110 @@ func writeLogToFile(baseDir string, level string, message string) {
 		return
 	}
 
+	logEntry := formatLogLine(level, message) + "\n"
 	filePath := filepath.Join(baseDir, getCurrentLogFilename())
+	rotateLogFileIfNeeded(filePath, int64(len(logEntry)))
+
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Error opening log file:", err)
 		return
 	}
-	defer file.Close()
 
-	if _, err := file.WriteString(formatLogLine(level, message) + "\n"); err != nil {
+	if _, err := file.WriteString(logEntry); err != nil {
+		_ = file.Close()
 		fmt.Println("Error writing to log file:", err)
+		return
+	}
+	if err := file.Close(); err != nil {
+		fmt.Println("Error closing log file:", err)
+		return
+	}
+	cleanupLogFiles(baseDir, filePath)
+}
+
+func rotateLogFileIfNeeded(filePath string, incomingBytes int64) {
+	maxBytes := int64(config.GetLogMaxSizeMB()) * 1024 * 1024
+	if maxBytes <= 0 {
+		return
+	}
+
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return
+	}
+	if info.Size()+incomingBytes <= maxBytes {
+		return
+	}
+
+	ext := filepath.Ext(filePath)
+	base := strings.TrimSuffix(filePath, ext)
+	utcStamp := time.Now().UTC().Format("2006-01-02T15-04-05.000Z")
+	for i := 0; ; i++ {
+		rotatedPath := fmt.Sprintf("%s.%s%s", base, utcStamp, ext)
+		if i > 0 {
+			rotatedPath = fmt.Sprintf("%s.%s.%d%s", base, utcStamp, i, ext)
+		}
+		if _, err := os.Stat(rotatedPath); os.IsNotExist(err) {
+			if err := os.Rename(filePath, rotatedPath); err != nil {
+				fmt.Println("Error rotating log file:", err)
+			}
+			return
+		}
+	}
+}
+
+type logFileCandidate struct {
+	path    string
+	modTime time.Time
+}
+
+func cleanupLogFiles(baseDir, currentFilePath string) {
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return
+	}
+
+	currentAbs, err := filepath.Abs(currentFilePath)
+	if err != nil {
+		currentAbs = currentFilePath
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -config.GetLogMaxAgeDays())
+	oldFiles := make([]logFileCandidate, 0, len(entries))
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".log" {
+			continue
+		}
+
+		path := filepath.Join(baseDir, entry.Name())
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			absPath = path
+		}
+		if absPath == currentAbs {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().UTC().Before(cutoff) {
+			_ = os.Remove(path)
+			continue
+		}
+
+		oldFiles = append(oldFiles, logFileCandidate{path: path, modTime: info.ModTime()})
+	}
+
+	sort.Slice(oldFiles, func(i, j int) bool {
+		return oldFiles[i].modTime.After(oldFiles[j].modTime)
+	})
+
+	keepFiles := config.GetLogKeepFiles()
+	for i := keepFiles; i < len(oldFiles); i++ {
+		_ = os.Remove(oldFiles[i].path)
 	}
 }
 

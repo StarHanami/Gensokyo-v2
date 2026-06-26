@@ -144,7 +144,7 @@ func main() {
 
 	//logger
 	logLevel := mylog.GetLogLevelFromConfig(config.GetLogLevel())
-	localFileLogger := strings.EqualFold(strings.TrimSpace(*localLogger), "enable")
+	localFileLogger := config.GetSaveLogs() || strings.EqualFold(strings.TrimSpace(*localLogger), "enable")
 	loggerAdapter := mylog.NewMyLogAdapter(logLevel, localFileLogger)
 	mylog.SetLogLevel(logLevel)
 	botgo.SetLogger(loggerAdapter)
